@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import type { IUser } from '../types/index.js';
 
@@ -43,6 +43,16 @@ const userSchema = new Schema<IUser>({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String
+  },
+  emailVerificationExpires: {
+    type: Date
   }
 }, {
   timestamps: true
@@ -73,6 +83,8 @@ userSchema.methods.comparePassword = async function(candidatePassword: string): 
 userSchema.methods.toJSON = function() {
   const userObject = this.toObject();
   delete userObject.password;
+  delete userObject.emailVerificationToken;
+  delete userObject.emailVerificationExpires;
   return userObject;
 };
 

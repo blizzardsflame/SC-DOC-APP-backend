@@ -54,3 +54,7 @@ export const authorize = (...roles: string[]) => {
     next();
   };
 };
+
+// Export aliases for backward compatibility
+export const auth = authenticate;
+export const requireRole = authorize;
