@@ -21,6 +21,13 @@ interface NotificationEmailData {
   notificationCount: number;
 }
 
+interface VerificationEmailData {
+  userEmail: string;
+  userName: string;
+  verificationToken: string;
+  verificationUrl: string;
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -42,6 +49,27 @@ class EmailService {
   async sendOverdueNotification(data: NotificationEmailData): Promise<boolean> {
     try {
       const { subject, htmlContent, textContent } = this.generateNotificationContent(data);
+
+      const mailOptions = {
+        from: `"BiblioDz Library" <${process.env.SMTP_USER}>`,
+        to: data.userEmail,
+        subject,
+        text: textContent,
+        html: htmlContent
+      };
+
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log(`Email sent successfully to ${data.userEmail}:`, result.messageId);
+      return true;
+    } catch (error) {
+      console.error('Email sending failed:', error);
+      return false;
+    }
+  }
+
+  async sendVerificationEmail(data: VerificationEmailData): Promise<boolean> {
+    try {
+      const { subject, htmlContent, textContent } = this.generateVerificationContent(data);
 
       const mailOptions = {
         from: `"BiblioDz Library" <${process.env.SMTP_USER}>`,
@@ -84,6 +112,22 @@ class EmailService {
         htmlContent: this.generateReminderHtml(data, direction, lang)
       };
     }
+  }
+
+  private generateVerificationContent(data: VerificationEmailData) {
+    const { userName, userEmail, verificationToken, verificationUrl } = data;
+    
+    const isArabic = /[\u0600-\u06FF]/.test(userName);
+    const direction = isArabic ? 'rtl' : 'ltr';
+    const lang = isArabic ? 'ar' : 'fr';
+
+    return {
+      subject: isArabic 
+        ? `تأكيد البريد الإلكتروني`
+        : `Confirmation de l'email`,
+      textContent: this.generateVerificationText(data, isArabic),
+      htmlContent: this.generateVerificationHtml(data, direction, lang)
+    };
   }
 
   private generateReminderText(data: NotificationEmailData, isArabic: boolean): string {
@@ -159,6 +203,34 @@ Ceci est un avis final concernant votre livre en retard:
 
 Veuillez contacter la bibliothèque immédiatement pour résoudre cette situation.
 
+Bibliothèque BiblioDz
+      `;
+    }
+  }
+
+  private generateVerificationText(data: VerificationEmailData, isArabic: boolean): string {
+    const { userName, userEmail, verificationToken, verificationUrl } = data;
+    
+    if (isArabic) {
+      return `
+مرحباً ${userName},
+
+يرجى الضغط على الرابط التالي لتأكيد بريدك الإلكتروني:
+
+${verificationUrl}?token=${verificationToken}
+
+شكراً لك،
+مكتبة BiblioDz
+      `;
+    } else {
+      return `
+Bonjour ${userName},
+
+Veuillez cliquer sur le lien suivant pour confirmer votre adresse email:
+
+${verificationUrl}?token=${verificationToken}
+
+Merci,
 Bibliothèque BiblioDz
       `;
     }
@@ -274,6 +346,54 @@ Bibliothèque BiblioDz
         </div>
         <div class="footer">
             <p>${isArabic ? 'للاستفسارات: library@bibliodz.dz | +213 XX XX XX XX' : 'Pour toute question: library@bibliodz.dz | +213 XX XX XX XX'}</p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+  }
+
+  private generateVerificationHtml(data: VerificationEmailData, direction: string, lang: string): string {
+    const { userName, userEmail, verificationToken, verificationUrl } = data;
+    const isArabic = lang === 'ar';
+    
+    return `
+<!DOCTYPE html>
+<html dir="${direction}" lang="${lang}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${isArabic ? 'تأكيد البريد الإلكتروني' : 'Confirmation de l\'email'}</title>
+    <style>
+        body { font-family: ${isArabic ? 'Tahoma, Arial' : 'Arial, sans-serif'}; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }
+        .verification-info { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb; }
+        .footer { text-align: center; margin-top: 30px; color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 BiblioDz</h1>
+            <h2>${isArabic ? 'تأكيد البريد الإلكتروني' : 'Confirmation de l\'email'}</h2>
+        </div>
+        <div class="content">
+            <p>${isArabic ? `مرحباً ${userName}،` : `Bonjour ${userName},`}</p>
+            <p>${isArabic ? 'يرجى الضغط على الرابط التالي لتأكيد بريدك الإلكتروني:' : 'Veuillez cliquer sur le lien suivant pour confirmer votre adresse email:'}</p>
+            
+            <div class="verification-info">
+                <h3>📝 ${isArabic ? 'معلومات التأكيد' : 'Informations de confirmation'}</h3>
+                <p><strong>${isArabic ? 'البريد الإلكتروني:' : 'Email:'}</strong> ${userEmail}</p>
+                <p><strong>${isArabic ? 'رابط التأكيد:' : 'Lien de confirmation:'}</strong> <a href="${verificationUrl}?token=${verificationToken}">${verificationUrl}?token=${verificationToken}</a></p>
+            </div>
+
+            <p>${isArabic ? 'شكراً لتعاونكم،' : 'Merci pour votre coopération,'}</p>
+            <p><strong>${isArabic ? 'فريق مكتبة BiblioDz' : 'L\'équipe de la Bibliothèque BiblioDz'}</strong></p>
+        </div>
+        <div class="footer">
+            <p>${isArabic ? 'هذا إشعار تلقائي، يرجى عدم الرد على هذا البريد الإلكتروني.' : 'Ceci est une notification automatique, veuillez ne pas répondre à cet email.'}</p>
         </div>
     </div>
 </body>

@@ -3,6 +3,7 @@ import { User } from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import type { AuthRequest, ApiResponse } from '../types/index.js';
+import emailService from '../services/emailService';
 
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
@@ -485,8 +486,18 @@ export const sendEmailVerification = async (req: AuthRequest, res: Response) => 
       emailVerificationExpires: verificationExpires
     });
 
-    // TODO: Send verification email using emailService
-    console.log(`Verification token for ${user.email}: ${verificationToken}`);
+    const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email`;
+    const emailSent = await emailService.sendVerificationEmail({
+      userEmail: user.email,
+      userName: `${user.firstname} ${user.lastname}`,
+      verificationToken,
+      verificationUrl
+    });
+
+    if (!emailSent) {
+      // Even if email fails, don't block the user. Log the error for monitoring.
+      console.error(`Failed to send verification email to ${user.email}`);
+    }
 
     res.json({
       success: true,
