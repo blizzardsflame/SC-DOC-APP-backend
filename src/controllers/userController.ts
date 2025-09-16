@@ -476,14 +476,30 @@ export const sendEmailVerification = async (req: AuthRequest, res: Response) => 
       } as ApiResponse);
     }
 
+    // Check cooldown (5 minutes = 300000ms)
+    if (user.lastVerificationEmailSent) {
+      const timeSinceLastEmail = Date.now() - user.lastVerificationEmailSent.getTime();
+      const cooldownPeriod = 5 * 60 * 1000; // 5 minutes
+      
+      if (timeSinceLastEmail < cooldownPeriod) {
+        const remainingTime = Math.ceil((cooldownPeriod - timeSinceLastEmail) / 1000);
+        return res.status(429).json({
+          success: false,
+          message: 'Veuillez attendre avant de demander un nouvel email de vérification',
+          data: { remainingSeconds: remainingTime }
+        } as ApiResponse);
+      }
+    }
+
     // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Update user with verification token
+    // Update user with verification token and timestamp
     await User.findByIdAndUpdate(user._id, {
       emailVerificationToken: verificationToken,
-      emailVerificationExpires: verificationExpires
+      emailVerificationExpires: verificationExpires,
+      lastVerificationEmailSent: new Date()
     });
 
     const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email`;

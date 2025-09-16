@@ -53,6 +53,9 @@ const userSchema = new Schema<IUser>({
   },
   emailVerificationExpires: {
     type: Date
+  },
+  lastVerificationEmailSent: {
+    type: Date
   }
 }, {
   timestamps: true
