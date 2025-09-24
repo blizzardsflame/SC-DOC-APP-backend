@@ -14,6 +14,7 @@ import bookRoutes from './routes/bookRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import borrowingRoutes from './routes/borrowingRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import libgenRoutes from './routes/libgenRoutes.js';
 
 import './services/notificationScheduler.js';
 
@@ -87,6 +88,7 @@ app.use('/api/books', bookRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/borrowings', borrowingRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/libgen', libgenRoutes);
 
 // Serve static files (uploads) with CORS headers
 app.use('/uploads', cors({
