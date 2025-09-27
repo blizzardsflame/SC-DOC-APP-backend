@@ -256,9 +256,9 @@ export const startLibGenSearch = async (req: AuthRequest, res: Response) => {
     }
 
     // Get parameters from query string (for POST with URL params)
-    const { q: query, page = 1, limit = 50 } = req.query;
+    const { q: query, page = 1, limit = 50, format, fields } = req.query;
 
-    console.log('Extracted parameters:', { query, page, limit });
+    console.log('Extracted parameters:', { query, page, limit, format, fields });
 
     if (!query || typeof query !== 'string') {
       console.log('Invalid query parameter:', query);
@@ -294,7 +294,8 @@ export const startLibGenSearch = async (req: AuthRequest, res: Response) => {
             console.log('LibGen status update:', status);
           }
         }
-      }
+      },
+      format as string
     ).then((results) => {
       const search = ongoingSearches.get(searchId);
       if (search) {

@@ -7,14 +7,17 @@ import * as cheerio from 'cheerio';
 
 interface LibGenBook {
   id: string;
+  libgen_id:string;
   title: string;
   author: string;
+  publisher?: string;
   year?: string;
   pages?: string;
   language?: string;
   filesize?: string;
   extension?: string;
   md5?: string;
+  isbn?: string;
   downloadUrl?: string;
   coverUrl?: string;
 }
@@ -50,7 +53,7 @@ class LibGenService {
   /**
    * Search for books in LibGen
    */
-  async searchBooks(query: string, page: number = 1, limit: number = 25, options: SearchOptions = {}): Promise<LibGenSearchResult> {
+  async searchBooks(query: string, page: number = 1, limit: number = 25, options: SearchOptions = {}, format?: string): Promise<LibGenSearchResult> {
     try {
       // First try real LibGen mirrors
       for (const baseUrl of this.baseUrls) {
@@ -65,55 +68,71 @@ class LibGenService {
             searchUrl = `${baseUrl}/search.php`;
             params = {
               req: query,
-              lg_topic: 'libgen',
+              lg_topic: 'libgen',  // Main library topic
               open: '0',
               view: 'simple',
               res: limit.toString(),
               sort: 'def',
               sortmode: 'ASC',
-              page: page.toString()
+              page: page.toString(),
+              // Restrict search to main fields only (books)
+              column: 'def',  // Default search (title, author, etc.)
+              // Exclude other topics by focusing on main library
+              topic: 'l'  // 'l' typically represents the main library (books)
             };
           } else if (baseUrl.includes('libgen.li')) {
             // libgen.li uses a different URL structure
             searchUrl = `${baseUrl}/index.php`;
             params = {
               req: query,
-              lg_topic: 'libgen',
+              lg_topic: 'libgen',  // Main library only
               open: '0',
               view: 'simple',
               res: limit.toString(),
               sort: 'def',
               sortmode: 'ASC',
-              page: page.toString()
+              page: page.toString(),
+              // Focus on books only, exclude comics/magazines/etc
+              column: 'def',
+              topic: 'l'  // Library books only
             };
           } else if (baseUrl.includes('gen.lib.rus.ec')) {
             // gen.lib.rus.ec uses search.php
             searchUrl = `${baseUrl}/search.php`;
             params = {
               req: query,
-              lg_topic: 'libgen',
+              lg_topic: 'libgen',  // Main library only
               open: '0',
               view: 'simple',
               res: limit.toString(),
               sort: 'def',
               sortmode: 'ASC',
-              page: page.toString()
+              page: page.toString(),
+              // Focus on main library books only
+              column: 'def',
+              topic: 'l'  // Library books, not comics/magazines
             };
           } else {
             // For libgen.rs and others
             searchUrl = `${baseUrl}/search.php`;
             params = {
               req: query,
-              lg_topic: 'libgen',
+              lg_topic: 'libgen',  // Main library only
               open: '0',
               view: 'simple',
               res: limit.toString(),
               sort: 'def',
               sortmode: 'ASC',
-              page: page.toString()
+              page: page.toString(),
+              // Focus on main library books only
+              column: 'def',
+              topic: 'l'  // Library books, exclude comics/magazines/etc
             };
           }
 
+          console.log(`Search URL: ${searchUrl}`);
+          console.log(`Search params:`, params);
+          
           const response = await axios.get(searchUrl, { 
             params,
             timeout: 5000, // Increased timeout to 15 seconds
@@ -132,13 +151,11 @@ class LibGenService {
             maxRedirects: 5
           });
 
-          options.onStatusUpdate?.(`Successfully connected to ${baseUrl}, parsing results...`);
-          
           // Debug: Log the HTML response size and first 500 characters
           console.log(`HTML response size: ${response.data.length} characters`);
           console.log(`HTML preview: ${response.data.substring(0, 500)}...`);
           
-          const books = this.parseSearchResults(response.data, baseUrl);
+          const books = this.parseSearchResults(response.data, baseUrl, format);
           
           if (books.length > 0) {
             options.onStatusUpdate?.(`Found ${books.length} books on ${baseUrl}`);
@@ -310,7 +327,7 @@ class LibGenService {
   /**
  * Parse HTML search results from LibGen
  */
-private parseSearchResults(html: string, baseUrl: string): LibGenBook[] {
+private parseSearchResults(html: string, baseUrl: string, format?: string): LibGenBook[] {
   const books: LibGenBook[] = [];
   
   console.log(`=== PARSING DEBUG for ${baseUrl} ===`);
@@ -332,28 +349,153 @@ private parseSearchResults(html: string, baseUrl: string): LibGenBook[] {
         if (cells.length >= 9) {
           const title = cells.eq(2).find('a').text().trim();
           const author = cells.eq(1).text().trim();
+          const publisher = cells.eq(3).text().trim(); // Publisher is usually in column 3
           const year = cells.eq(4).text().trim();
           const pages = cells.eq(5).text().trim();
           const language = cells.eq(6).text().trim();
           const filesize = cells.eq(7).text().trim();
           const extension = cells.eq(8).text().trim();
           
+          // Debug: Log what we're extracting
+          console.log(`=== BOOK PARSING DEBUG ===`);
+          console.log(`Title: "${title}"`);
+          console.log(`Author: "${author}"`);
+          console.log(`Publisher: "${publisher}"`);
+          console.log(`Year: "${year}"`);
+          console.log(`Pages: "${pages}"`);
+          console.log(`Language: "${language}"`);
+          console.log(`Filesize: "${filesize}"`);
+          console.log(`Extension: "${extension}"`);
+          console.log(`Cells count: ${cells.length}`);
+          
           // Extract MD5 from download links
           const downloadLink = cells.eq(9).find('a').attr('href');
           const md5Match = downloadLink?.match(/md5=([a-f0-9]{32})/i);
           const md5 = md5Match ? md5Match[1] : '';
           
+          // Extract both Book ID and LibGen ID separately
+          let bookId = '';
+          let libgenId = '';
+          
+          // Method 1: Extract Book ID from download links (?id=123456) - This is the main book ID
+          const downloadIdMatch = downloadLink?.match(/[?&]id=(\d+)/i);
+          if (downloadIdMatch) {
+            bookId = downloadIdMatch[1];
+            console.log(`Book ID found via download link: ${bookId}`);
+          }
+          
+          // Method 2: Extract Book ID from first column (usually contains the main ID)
+          if (!bookId) {
+            const firstCellText = cells.eq(0).text().trim();
+            const firstCellIdMatch = firstCellText.match(/^(\d+)$/);
+            if (firstCellIdMatch) {
+              bookId = firstCellIdMatch[1];
+              console.log(`Book ID found in first column: ${bookId}`);
+            }
+          }
+          
+          // Method 3: Extract Book ID from book detail links in any cell
+          if (!bookId) {
+            for (let i = 0; i < cells.length; i++) {
+              const cellHtml = cells.eq(i).html() || '';
+              const detailLinkMatch = cellHtml.match(/(?:book\/index\.php|details).*[?&]id=(\d+)/i);
+              if (detailLinkMatch) {
+                bookId = detailLinkMatch[1];
+                console.log(`Book ID found in detail link (cell ${i}): ${bookId}`);
+                break;
+              }
+            }
+          }
+          
+          // Method 4: Extract Book ID from cover image URLs
+          if (!bookId) {
+            for (let i = 0; i < cells.length; i++) {
+              const cellHtml = cells.eq(i).html() || '';
+              const coverIdMatch = cellHtml.match(/\/covers\/(\d+)\//i);
+              if (coverIdMatch) {
+                bookId = coverIdMatch[1];
+                console.log(`Book ID found in cover URL (cell ${i}): ${bookId}`);
+                break;
+              }
+            }
+          }
+          
+          // Method 5: Extract Book ID from any link containing id parameter
+          if (!bookId) {
+            for (let i = 0; i < cells.length; i++) {
+              const cellHtml = cells.eq(i).html() || '';
+              const anyIdMatch = cellHtml.match(/[?&]id=(\d+)/i);
+              if (anyIdMatch) {
+                bookId = anyIdMatch[1];
+                console.log(`Book ID found in generic link (cell ${i}): ${bookId}`);
+                break;
+              }
+            }
+          }
+          
+          // Now extract LibGen ID (different from Book ID)
+          // Look for libgen_id in various places
+          for (let i = 0; i < cells.length; i++) {
+            const cellHtml = cells.eq(i).html() || '';
+            const cellText = cells.eq(i).text().trim();
+            
+            // Look for libgen_id in attributes or data
+            const libgenIdMatch = cellHtml.match(/(?:libgen_id|data-libgen-id)["']?\s*[:=]\s*["']?(\d+)["']?/i);
+            if (libgenIdMatch && !libgenId) {
+              libgenId = libgenIdMatch[1];
+              console.log(`LibGen ID found in cell ${i}: ${libgenId}`);
+              break;
+            }
+          }
+          
+          // Comprehensive data logging
+          console.log(`=== COMPREHENSIVE DATA EXTRACTION ===`);
+          console.log(`Book ID: "${bookId}"`);
+          console.log(`LibGen ID: "${libgenId}"`);
+          console.log(`MD5: "${md5}"`);
+          console.log(`Title: "${title}"`);
+          console.log(`Author: "${author}"`);
+          console.log(`Publisher: "${publisher}"`);
+          console.log(`Year: "${year}"`);
+          console.log(`Pages: "${pages}"`);
+          console.log(`Language: "${language}"`);
+          console.log(`Filesize: "${filesize}"`);
+          console.log(`Extension: "${extension}"`);
+          console.log(`Download Link: "${downloadLink}"`);
+          console.log(`=== END DATA EXTRACTION ===`);
+          
+          // Generate cover URL using correct LibGen pattern
+          // LibGen uses first 4 digits of LibGen ID + "0000" for cover directory
+          let coverUrl = '';
+          if (libgenId && md5) {
+            const coverRepoId = libgenId.length >= 4 ? libgenId.substring(0, 4) + '0000' : libgenId;
+            coverUrl = `${baseUrl}/covers/${coverRepoId}/${md5}.jpg`;
+            console.log(`Generated cover URL with modified LibGen ID: ${libgenId} -> ${coverRepoId}`);
+          } else if (md5) {
+            // Fallback to old pattern if no LibGen ID
+            coverUrl = `${baseUrl}/covers/${md5.charAt(0).toLowerCase()}/${md5}.jpg`;
+          }
+          
+          // Try to extract ISBN from title or other fields
+          const titleText = title + ' ' + cells.eq(0).text(); // ID column might have ISBN
+          const isbnMatch = titleText.match(/(\d{9}[\dX]|\d{13})/g);
+          const isbn = isbnMatch ? isbnMatch[0] : undefined;
+          
           if (title && author && (extension.toLowerCase() === 'pdf' || extension.toLowerCase() === 'epub')) {
             books.push({
-              id: md5 || `${index}`,
+              id: bookId || md5 || `${index}`, // Use Book ID as main ID, fallback to MD5
+              libgen_id: libgenId || '', // LibGen ID for cover URLs
               title,
               author,
+              publisher: publisher || undefined,
               year: year || undefined,
               pages: pages || undefined,
               language: language || undefined,
               filesize: filesize || undefined,
               extension: extension.toLowerCase(),
-              md5: md5 || undefined
+              md5: md5 || undefined,
+              isbn: isbn || undefined,
+              coverUrl: coverUrl || undefined
             });
           }
         }
@@ -378,25 +520,113 @@ private parseSearchResults(html: string, baseUrl: string): LibGenBook[] {
           }
         }
         
-        // Try to find book data - libgen.li structure might be different
+        // libgen.li has a specific structure based on the logs
         if (cells.length >= 5) {
-          // Attempt to extract book info - adjust indices based on actual structure
-          let title = '';
-          let author = '';
-          let extension = '';
-          let md5 = '';
+          // Based on actual libgen.li structure from logs:
+          // Cell 0: Title with ISBN info
+          // Cell 1: Author
+          // Cell 2: Publisher  
+          // Cell 3: Year
+          // Cell 4: Language
           
-          // Try different cell positions for title
+          let title = cells.eq(0).text().trim();
+          let author = cells.eq(1).text().trim();
+          const publisher = cells.eq(2).text().trim();
+          const year = cells.eq(3).text().trim();
+          const language = cells.eq(4).text().trim();
+          
+          // Initialize variables for ID extraction
+          let bookId = '';
+          let libgenId = '';
+          let md5 = '';
+          let extension = '';
+          let coverUrl = '';
+          
+          // Debug: Log what we're extracting
+          console.log(`=== LIBGEN.LI BOOK PARSING DEBUG ===`);
+          console.log(`Title: "${title}"`);
+          console.log(`Author: "${author}"`);
+          // Extract ID, MD5, extension, and cover URL from any cell that contains them
+          
           for (let i = 0; i < cells.length; i++) {
-            const cellText = cells.eq(i).text().trim();
             const cellHtml = cells.eq(i).html() || '';
+            const cellText = cells.eq(i).text().trim();
             
-            // Look for titles (usually longer text with book-like content)
-            if (cellText.length > 10 && cellText.length < 200 && 
-                !cellText.includes('Libgen') && !cellText.includes('Sci-Hub') &&
-                !cellText.match(/^\d+$/) && !cellText.match(/^\d+\.\d+\s*(MB|KB|GB)$/i)) {
-              if (!title || cellText.length > title.length) {
-                title = cellText;
+            // Look for cover_url field in HTML (LibGen specific)
+            const coverUrlMatch = cellHtml.match(/cover_url["']?\s*[:=]\s*["']([^"']+)["']/i);
+            if (coverUrlMatch && !coverUrl) {
+              coverUrl = coverUrlMatch[1];
+            }
+            
+            // Look for cover images in HTML
+            const imgMatch = cellHtml.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+            if (imgMatch && !coverUrl) {
+              let imgSrc = imgMatch[1];
+              // Make sure it's a full URL
+              if (imgSrc.startsWith('/')) {
+                imgSrc = baseUrl + imgSrc;
+              } else if (!imgSrc.startsWith('http')) {
+                imgSrc = baseUrl + '/' + imgSrc;
+              }
+              coverUrl = imgSrc;
+            }
+            
+            // Look for thumbnail or cover links
+            const thumbMatch = cellHtml.match(/(?:thumb|cover)[^>]*src=["']([^"']+)["']/i);
+            if (thumbMatch && !coverUrl) {
+              let thumbSrc = thumbMatch[1];
+              if (thumbSrc.startsWith('/')) {
+                thumbSrc = baseUrl + thumbSrc;
+              } else if (!thumbSrc.startsWith('http')) {
+                thumbSrc = baseUrl + '/' + thumbSrc;
+              }
+              coverUrl = thumbSrc;
+            }
+            
+            // Extract both Book ID and LibGen ID for libgen.li
+            if (!bookId) {
+              // Method 1: From id attributes or parameters - This is Book ID
+              const idMatch = cellHtml.match(/(?:id["']?\s*[:=]\s*["']?(\d+)["']?|\bid=(\d+))/i);
+              if (idMatch) {
+                bookId = idMatch[1] || idMatch[2];
+                console.log(`Book ID found via id attribute (libgen.li): ${bookId}`);
+              }
+            }
+            
+            if (!bookId) {
+              // Method 2: From download/detail links - This is Book ID
+              const linkIdMatch = cellHtml.match(/[?&]id=(\d+)/i);
+              if (linkIdMatch) {
+                bookId = linkIdMatch[1];
+                console.log(`Book ID found via link parameter (libgen.li): ${bookId}`);
+              }
+            }
+            
+            if (!bookId) {
+              // Method 3: From cover URLs - This is Book ID
+              const coverIdMatch = cellHtml.match(/\/covers\/(\d+)\//i);
+              if (coverIdMatch) {
+                bookId = coverIdMatch[1];
+                console.log(`Book ID found via cover URL (libgen.li): ${bookId}`);
+              }
+            }
+            
+            if (!bookId) {
+              // Method 4: From book detail page links - This is Book ID
+              const detailIdMatch = cellHtml.match(/(?:book\/index\.php|details).*[?&]id=(\d+)/i);
+              if (detailIdMatch) {
+                bookId = detailIdMatch[1];
+                console.log(`Book ID found via detail link (libgen.li): ${bookId}`);
+              }
+            }
+            
+            // Now look for LibGen ID (separate from Book ID)
+            if (!libgenId) {
+              // Look for libgen_id in attributes or data
+              const libgenIdMatch = cellHtml.match(/(?:libgen_id|data-libgen-id|libgen-id)["']?\s*[:=]\s*["']?(\d+)["']?/i);
+              if (libgenIdMatch) {
+                libgenId = libgenIdMatch[1];
+                console.log(`LibGen ID found in libgen.li cell: ${libgenId}`);
               }
             }
             
@@ -407,31 +637,73 @@ private parseSearchResults(html: string, baseUrl: string): LibGenBook[] {
             }
             
             // Look for file extensions
-            if (cellText.toLowerCase().includes('.pdf') || cellText.toLowerCase().includes('pdf')) {
+            if (cellText.toLowerCase().includes('pdf') || cellHtml.toLowerCase().includes('pdf')) {
               extension = 'pdf';
-            } else if (cellText.toLowerCase().includes('.epub') || cellText.toLowerCase().includes('epub')) {
+            } else if (cellText.toLowerCase().includes('epub') || cellHtml.toLowerCase().includes('epub')) {
               extension = 'epub';
             }
           }
+          
+          // If no cover found, try LibGen's correct cover URL patterns
+          if (!coverUrl && bookId && md5) {
+            // LibGen uses first 4 digits of Repository ID + "0000" for cover directory
+            const coverRepoId = bookId.length >= 4 ? bookId.substring(0, 4) + '0000' : bookId;
+            const patterns = [
+              `${baseUrl}/covers/${coverRepoId}/${md5}.jpg`,
+              `https://libgen.li/covers/${coverRepoId}/${md5}.jpg`,
+              `https://libgen.is/covers/${coverRepoId}/${md5}.jpg`,
+              `https://libgen.st/covers/${coverRepoId}/${md5}.jpg`
+            ];
+            
+            // Use the first pattern as default (most common)
+            coverUrl = patterns[0];
+            console.log(`Generated cover URL (libgen.li) with modified repo ID: ${bookId} -> ${coverRepoId}`);
+          } else if (!coverUrl && md5) {
+            // Fallback to old pattern if no ID found
+            coverUrl = `${baseUrl}/covers/${md5.charAt(0).toLowerCase()}/${md5}.jpg`;
+          }
+          
+          // Extract ISBN from title
+          const isbnMatch = title.match(/(\d{9}[\dX]|\d{13})/g);
+          const isbn = isbnMatch ? isbnMatch[0] : undefined;
           
           // Use title as author if no separate author found
           if (!author && title) {
             author = title.split(/[;,]|by\s+/i)[0].trim();
           }
           
-          console.log(`Extracted - Title: "${title}", Author: "${author}", MD5: "${md5}", Extension: "${extension}"`);
+          // Comprehensive data logging for libgen.li
+          console.log(`=== COMPREHENSIVE DATA EXTRACTION (libgen.li) ===`);
+          console.log(`Book ID: "${bookId}"`);
+          console.log(`LibGen ID: "${libgenId}"`);
+          console.log(`MD5: "${md5}"`);
+          console.log(`Title: "${title}"`);
+          console.log(`Author: "${author}"`);
+          console.log(`Publisher: "${publisher}"`);
+          console.log(`Year: "${year}"`);
+          console.log(`Language: "${language}"`);
+          console.log(`Extension: "${extension}"`);
+          console.log(`Cover URL: "${coverUrl}"`);
+          console.log(`=== END DATA EXTRACTION (libgen.li) ===`);
           
-          if (title && title.length > 3 && (extension === 'pdf' || extension === 'epub') && md5) {
+          // Apply format filter if specified
+          const formatMatches = !format || format === 'all' || extension.toLowerCase() === format.toLowerCase();
+          
+          if (title && title.length > 3 && (extension === 'pdf' || extension === 'epub') && md5 && formatMatches) {
             books.push({
-              id: md5,
+              id: bookId || md5, // Use Book ID as main ID, fallback to MD5
+              libgen_id: libgenId || '', // LibGen ID for cover URLs
               title,
               author: author || 'Unknown Author',
-              md5: md5,
+              publisher: publisher || undefined,
+              year: year || undefined,
+              pages: undefined, // Not available in libgen.li format
+              language: language || undefined,
+              filesize: undefined, // Not available in libgen.li format
               extension: extension,
-              year: undefined,
-              pages: undefined,
-              language: undefined,
-              filesize: undefined
+              md5: md5,
+              isbn: isbn || undefined,
+              coverUrl: coverUrl || undefined
             });
             console.log(`✓ Added book: ${title}`);
           }
@@ -462,6 +734,7 @@ private parseSearchResults(html: string, baseUrl: string): LibGenBook[] {
           if (title && author && (extension.toLowerCase() === 'pdf' || extension.toLowerCase() === 'epub')) {
             books.push({
               id: md5 || `${index}`,
+              libgen_id: '', // No LibGen ID available in this parsing section
               title,
               author,
               year: year || undefined,
@@ -485,18 +758,39 @@ private parseSearchResults(html: string, baseUrl: string): LibGenBook[] {
     
     console.log(`After removing duplicates: ${uniqueBooks.length} unique books`);
     
+    // Sort books by year (latest first), then by relevance (original order)
+    const sortedBooks = uniqueBooks.sort((a, b) => {
+      const yearA = a.year ? parseInt(a.year) : 0;
+      const yearB = b.year ? parseInt(b.year) : 0;
+      
+      // If both have years, sort by year descending (latest first)
+      if (yearA && yearB) {
+        return yearB - yearA;
+      }
+      
+      // If only one has a year, prioritize the one with a year
+      if (yearA && !yearB) return -1;
+      if (!yearA && yearB) return 1;
+      
+      // If neither has a year, maintain original order (relevance)
+      return 0;
+    });
+    
+    console.log(`After sorting: ${sortedBooks.length} books (latest first)`);
+    
     // Debug: Log first few books to see what we're getting
-    if (uniqueBooks.length > 0) {
-      const firstBook = uniqueBooks[0];
-      console.log('First book parsed:', {
+    if (sortedBooks.length > 0) {
+      const firstBook = sortedBooks[0];
+      console.log('First book parsed (after sorting):', {
         title: firstBook.title,
         author: firstBook.author,
+        year: firstBook.year,
         md5: firstBook.md5,
         extension: firstBook.extension
       });
     }
     
-    return uniqueBooks;
+    return sortedBooks;
     
   } catch (error) {
     console.error('Error parsing LibGen results:', error);
