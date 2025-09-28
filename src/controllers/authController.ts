@@ -2,9 +2,11 @@ import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { User } from '../models/User.js';
 import type { AuthRequest, ApiResponse } from '../types/index.js';
 import { config } from '../config/env.js';
+import emailService from '../services/emailService.js';
 
 const generateToken = (userId: string): string => {
   return jwt.sign({ userId }, config.JWT_SECRET, {
@@ -79,6 +81,10 @@ export const register = async (req: Request, res: Response) => {
       console.log('Card photo saved:', cardPhotoFileName, cardPhotoFile.size, 'bytes');
     }
 
+    // Generate email verification token
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     // Create new user
     const user = new User({
       firstname,
@@ -89,20 +95,43 @@ export const register = async (req: Request, res: Response) => {
       cardNumber,
       cardPhoto: cardPhotoPath,
       faculty: role === 'student' ? faculty : undefined,
-      isActive: false // Users need staff validation
+      isActive: false, // Users need staff validation
+      isEmailVerified: false, // Email needs verification
+      emailVerificationToken,
+      emailVerificationExpires
     });
 
     await user.save();
 
-    // Generate token
-    const token = generateToken(user._id);
+    // Send verification email
+    try {
+      const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email/${emailVerificationToken}`;
+      
+      await emailService.sendVerificationEmail({
+        userEmail: email,
+        userName: `${firstname} ${lastname}`,
+        verificationToken: emailVerificationToken,
+        verificationUrl
+      });
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Don't fail registration if email fails, just log it
+    }
 
     res.status(201).json({
       success: true,
-      message: 'Compte créé avec succès. Votre compte est en attente de validation par le personnel.',
+      message: 'Compte créé avec succès. Veuillez vérifier votre email pour activer votre compte. Votre compte est également en attente de validation par le personnel.',
       data: {
-        user: user.toJSON(),
-        token
+        user: {
+          id: user._id,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          role: user.role,
+          isEmailVerified: user.isEmailVerified,
+          isActive: user.isActive
+        },
+        requiresEmailVerification: true
       }
     } as ApiResponse);
   } catch (error) {
@@ -127,11 +156,20 @@ export const login = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
+    // Check if email is verified
+    if (!user.isEmailVerified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Veuillez vérifier votre email avant de vous connecter. Vérifiez votre boîte de réception.',
+        requiresEmailVerification: true
+      } as ApiResponse);
+    }
+
     // Check if user is active
     if (!user.isActive) {
       return res.status(401).json({
         success: false,
-        message: 'Compte suspendu. Contactez l\'administration.'
+        message: 'Compte en attente de validation par le personnel.'
       } as ApiResponse);
     }
 
