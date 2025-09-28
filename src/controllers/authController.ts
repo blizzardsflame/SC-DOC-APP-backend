@@ -1,12 +1,13 @@
 import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
 import { User } from '../models/User.js';
 import type { AuthRequest, ApiResponse } from '../types/index.js';
-import { config } from '../config/env.js';
 import emailService from '../services/emailService.js';
+import { config } from '../config/env.js';
 
 const generateToken = (userId: string): string => {
   return jwt.sign({ userId }, config.JWT_SECRET, {
@@ -198,6 +199,152 @@ export const login = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la connexion'
+    } as ApiResponse);
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'L\'adresse email est requise'
+      } as ApiResponse);
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return res.status(200).json({
+        success: true,
+        message: 'Si cette adresse email existe, vous recevrez un lien de réinitialisation'
+      } as ApiResponse);
+    }
+
+    // Check cooldown (5 minutes between password reset emails)
+    const now = new Date();
+    if (user.lastPasswordResetEmailSent) {
+      const timeSinceLastEmail = now.getTime() - user.lastPasswordResetEmailSent.getTime();
+      const cooldownTime = 5 * 60 * 1000; // 5 minutes in milliseconds
+      
+      if (timeSinceLastEmail < cooldownTime) {
+        const remainingSeconds = Math.ceil((cooldownTime - timeSinceLastEmail) / 1000);
+        return res.status(429).json({
+          success: false,
+          message: `Veuillez attendre ${Math.ceil(remainingSeconds / 60)} minutes avant de demander un nouveau lien`,
+          remainingSeconds
+        } as ApiResponse);
+      }
+    }
+
+    // Generate password reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Update user with reset token
+    await User.findByIdAndUpdate(user._id, {
+      passwordResetToken: resetToken,
+      passwordResetExpires: resetExpires,
+      lastPasswordResetEmailSent: now
+    });
+
+    // Send password reset email
+    try {
+      const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+      
+      await emailService.sendPasswordResetEmail({
+        userEmail: email,
+        userName: `${user.firstname} ${user.lastname}`,
+        resetToken,
+        resetUrl
+      });
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      // Reset the token if email fails
+      await User.findByIdAndUpdate(user._id, {
+        $unset: {
+          passwordResetToken: 1,
+          passwordResetExpires: 1,
+          lastPasswordResetEmailSent: 1
+        }
+      });
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'envoi de l\'email'
+      } as ApiResponse);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Un lien de réinitialisation a été envoyé à votre adresse email'
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la demande de réinitialisation'
+    } as ApiResponse);
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le nouveau mot de passe est requis'
+      } as ApiResponse);
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le mot de passe doit contenir au moins 6 caractères'
+      } as ApiResponse);
+    }
+
+    // Find user with valid reset token
+    const user = await User.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token invalide ou expiré'
+      } as ApiResponse);
+    }
+
+    // Update password and clear reset token
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    await User.findByIdAndUpdate(user._id, {
+      password: hashedPassword,
+      $unset: {
+        passwordResetToken: 1,
+        passwordResetExpires: 1,
+        lastPasswordResetEmailSent: 1
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Mot de passe réinitialisé avec succès'
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la réinitialisation du mot de passe'
     } as ApiResponse);
   }
 };

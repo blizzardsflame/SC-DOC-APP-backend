@@ -28,6 +28,13 @@ interface VerificationEmailData {
   verificationUrl: string;
 }
 
+interface PasswordResetEmailData {
+  userEmail: string;
+  userName: string;
+  resetToken: string;
+  resetUrl: string;
+}
+
 class EmailService {
   private transporter: nodemailer.Transporter;
 
@@ -84,6 +91,27 @@ class EmailService {
       return true;
     } catch (error) {
       console.error('Email sending failed:', error);
+      return false;
+    }
+  }
+
+  async sendPasswordResetEmail(data: PasswordResetEmailData): Promise<boolean> {
+    try {
+      const { subject, htmlContent, textContent } = this.generatePasswordResetContent(data);
+
+      const mailOptions = {
+        from: `"BiblioDz Library" <${process.env.SMTP_USER}>`,
+        to: data.userEmail,
+        subject,
+        text: textContent,
+        html: htmlContent
+      };
+
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log(`Password reset email sent successfully to ${data.userEmail}:`, result.messageId);
+      return true;
+    } catch (error) {
+      console.error('Password reset email sending failed:', error);
       return false;
     }
   }
@@ -399,6 +427,122 @@ Bibliothèque BiblioDz
 </body>
 </html>
     `;
+  }
+
+  private generatePasswordResetContent(data: PasswordResetEmailData) {
+    const { userName, userEmail, resetUrl } = data;
+    
+    // Detect if user name contains Arabic characters
+    const isArabic = /[\u0600-\u06FF]/.test(userName);
+    
+    return {
+      subject: isArabic 
+        ? 'إعادة تعيين كلمة المرور - BiblioDz'
+        : 'Réinitialisation de mot de passe - BiblioDz',
+      textContent: this.generatePasswordResetText(data, isArabic),
+      htmlContent: this.generatePasswordResetHtml(data, isArabic)
+    };
+  }
+
+  private generatePasswordResetText(data: PasswordResetEmailData, isArabic: boolean): string {
+    const { userName, userEmail, resetUrl } = data;
+    
+    if (isArabic) {
+      return `
+مرحباً ${userName}،
+
+لقد تلقينا طلباً لإعادة تعيين كلمة المرور لحسابك في BiblioDz.
+
+معلومات الطلب:
+البريد الإلكتروني: ${userEmail}
+رابط إعادة التعيين: ${resetUrl}
+
+إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذا البريد الإلكتروني.
+
+ينتهي صلاحية هذا الرابط خلال 15 دقيقة.
+
+شكراً لتعاونكم،
+فريق مكتبة BiblioDz
+      `;
+    } else {
+      return `
+Bonjour ${userName},
+
+Nous avons reçu une demande de réinitialisation de mot de passe pour votre compte BiblioDz.
+
+Informations de la demande:
+Email: ${userEmail}
+Lien de réinitialisation: ${resetUrl}
+
+Si vous n'avez pas demandé cette réinitialisation, veuillez ignorer cet email.
+
+Ce lien expire dans 15 minutes.
+
+Merci pour votre coopération,
+L'équipe de la Bibliothèque BiblioDz
+      `;
+    }
+  }
+
+  private generatePasswordResetHtml(data: PasswordResetEmailData, isArabic: boolean): string {
+    const { userName, userEmail, resetUrl } = data;
+    const direction = isArabic ? 'rtl' : 'ltr';
+    
+    return `<!DOCTYPE html>
+<html lang="${isArabic ? 'ar' : 'fr'}" dir="${direction}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${isArabic ? 'إعادة تعيين كلمة المرور' : 'Réinitialisation de mot de passe'}</title>
+    <style>
+        body { font-family: ${isArabic ? 'Arial, "Noto Sans Arabic"' : 'Arial, sans-serif'}; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .container { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; overflow: hidden; }
+        .header { background: rgba(255,255,255,0.1); padding: 30px; text-align: center; color: white; }
+        .header h1 { margin: 0; font-size: 28px; }
+        .header h2 { margin: 10px 0 0 0; font-size: 18px; opacity: 0.9; }
+        .content { background: white; padding: 30px; }
+        .reset-button { display: inline-block; background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+        .reset-info { background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444; }
+        .footer { text-align: center; margin-top: 30px; color: #6b7280; }
+        .warning { background: #fef2f2; border: 1px solid #fecaca; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 BiblioDz</h1>
+            <h2>${isArabic ? 'إعادة تعيين كلمة المرور' : 'Réinitialisation de mot de passe'}</h2>
+        </div>
+        <div class="content">
+            <p>${isArabic ? `مرحباً ${userName}،` : `Bonjour ${userName},`}</p>
+            <p>${isArabic ? 'لقد تلقينا طلباً لإعادة تعيين كلمة المرور لحسابك في BiblioDz.' : 'Nous avons reçu une demande de réinitialisation de mot de passe pour votre compte BiblioDz.'}</p>
+            
+            <div class="reset-info">
+                <h3>🔑 ${isArabic ? 'معلومات إعادة التعيين' : 'Informations de réinitialisation'}</h3>
+                <p><strong>${isArabic ? 'البريد الإلكتروني:' : 'Email:'}</strong> ${userEmail}</p>
+                <p><strong>${isArabic ? 'صالح لمدة:' : 'Valide pendant:'}</strong> ${isArabic ? '15 دقيقة' : '15 minutes'}</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetUrl}" class="reset-button">
+                    ${isArabic ? '🔄 إعادة تعيين كلمة المرور' : '🔄 Réinitialiser le mot de passe'}
+                </a>
+            </div>
+
+            <div class="warning">
+                <p><strong>⚠️ ${isArabic ? 'تحذير أمني:' : 'Avertissement de sécurité:'}</strong></p>
+                <p>${isArabic ? 'إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذا البريد الإلكتروني. حسابك آمن.' : 'Si vous n\'avez pas demandé cette réinitialisation, veuillez ignorer cet email. Votre compte est sécurisé.'}</p>
+            </div>
+
+            <p>${isArabic ? 'شكراً لتعاونكم،' : 'Merci pour votre coopération,'}</p>
+            <p><strong>${isArabic ? 'فريق مكتبة BiblioDz' : 'L\'équipe de la Bibliothèque BiblioDz'}</strong></p>
+        </div>
+        <div class="footer">
+            <p>${isArabic ? 'هذا البريد الإلكتروني تم إرساله تلقائياً، يرجى عدم الرد عليه.' : 'Cet email a été envoyé automatiquement, veuillez ne pas y répondre.'}</p>
+        </div>
+    </div>
+</body>
+</html>`;
   }
 
   async testConnection(): Promise<boolean> {

@@ -72,6 +72,15 @@ const userSchema = new Schema<IUser>({
   },
   lastVerificationEmailSent: {
     type: Date
+  },
+  passwordResetToken: {
+    type: String
+  },
+  passwordResetExpires: {
+    type: Date
+  },
+  lastPasswordResetEmailSent: {
+    type: Date
   }
 }, {
   timestamps: true
@@ -104,6 +113,8 @@ userSchema.methods.toJSON = function() {
   delete userObject.password;
   delete userObject.emailVerificationToken;
   delete userObject.emailVerificationExpires;
+  delete userObject.passwordResetToken;
+  delete userObject.passwordResetExpires;
   return userObject;
 };
 

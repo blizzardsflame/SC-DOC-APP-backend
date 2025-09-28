@@ -17,6 +17,9 @@ export interface IUser extends Document {
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
   lastVerificationEmailSent?: Date;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+  lastPasswordResetEmailSent?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;

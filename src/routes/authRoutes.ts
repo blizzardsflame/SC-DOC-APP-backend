@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { register, login, getMe, updateProfile, changePassword } from '../controllers/authController.js';
+import { register, login, getMe, updateProfile, changePassword, forgotPassword, resetPassword } from '../controllers/authController.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate, registerSchema, loginSchema } from '../middleware/validation.js';
 
@@ -34,6 +34,8 @@ router.post('/register',
   register
 );
 router.post('/login', validate(loginSchema), login);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 // Protected routes
 router.get('/me', authenticate, getMe);
