@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
@@ -10,9 +10,11 @@ import emailService from '../services/emailService.js';
 import { config } from '../config/env.js';
 
 const generateToken = (userId: string): string => {
-  return jwt.sign({ userId }, config.JWT_SECRET, {
-    expiresIn: config.JWT_EXPIRES_IN
-  });
+  return jwt.sign(
+    { userId }, 
+    config.JWT_SECRET as string,
+    { expiresIn: config.JWT_EXPIRES_IN } as SignOptions
+  );
 };
 
 export const register = async (req: Request, res: Response) => {
