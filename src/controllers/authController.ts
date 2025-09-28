@@ -1,5 +1,7 @@
 import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import fs from 'fs';
+import path from 'path';
 import { User } from '../models/User.js';
 import type { AuthRequest, ApiResponse } from '../types/index.js';
 import { config } from '../config/env.js';
@@ -12,7 +14,32 @@ const generateToken = (userId: string): string => {
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { firstname, lastname, email, password, role } = req.body;
+    const { firstname, lastname, email, password, role, cardNumber, faculty } = req.body;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+    // Validate required fields
+    if (!firstname || !lastname || !email || !password || !cardNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tous les champs obligatoires doivent être remplis'
+      } as ApiResponse);
+    }
+
+    // Validate card photo upload
+    if (!files || !files.cardPhoto || !files.cardPhoto[0]) {
+      return res.status(400).json({
+        success: false,
+        message: 'La photo de carte est requise'
+      } as ApiResponse);
+    }
+
+    // Validate faculty for students
+    if (role === 'student' && !faculty) {
+      return res.status(400).json({
+        success: false,
+        message: 'La faculté est requise pour les étudiants'
+      } as ApiResponse);
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -23,13 +50,46 @@ export const register = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
+    // Check if card number already exists
+    const existingCard = await User.findOne({ cardNumber });
+    if (existingCard) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ce numéro de carte est déjà utilisé'
+      } as ApiResponse);
+    }
+
+    // Handle card photo upload
+    let cardPhotoPath = '';
+    if (files.cardPhoto && files.cardPhoto[0]) {
+      const cardPhotoFile = files.cardPhoto[0];
+      const cardPhotoFileName = `${Date.now()}-${cardPhotoFile.originalname}`;
+      const cardPhotoDir = path.join(process.cwd(), 'uploads', 'cards');
+      
+      // Ensure directory exists
+      if (!fs.existsSync(cardPhotoDir)) {
+        fs.mkdirSync(cardPhotoDir, { recursive: true });
+      }
+      
+      const fullCardPhotoPath = path.join(cardPhotoDir, cardPhotoFileName);
+      
+      // Save file to disk
+      fs.writeFileSync(fullCardPhotoPath, cardPhotoFile.buffer);
+      cardPhotoPath = `/uploads/cards/${cardPhotoFileName}`;
+      console.log('Card photo saved:', cardPhotoFileName, cardPhotoFile.size, 'bytes');
+    }
+
     // Create new user
     const user = new User({
       firstname,
       lastname,
       email,
       password,
-      role: role || 'student'
+      role: role || 'student',
+      cardNumber,
+      cardPhoto: cardPhotoPath,
+      faculty: role === 'student' ? faculty : undefined,
+      isActive: false // Users need staff validation
     });
 
     await user.save();
@@ -39,7 +99,7 @@ export const register = async (req: Request, res: Response) => {
 
     res.status(201).json({
       success: true,
-      message: 'Utilisateur créé avec succès',
+      message: 'Compte créé avec succès. Votre compte est en attente de validation par le personnel.',
       data: {
         user: user.toJSON(),
         token

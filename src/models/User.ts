@@ -40,9 +40,25 @@ const userSchema = new Schema<IUser>({
     },
     default: 'student'
   },
+  cardNumber: {
+    type: String,
+    required: [true, 'Le numéro de carte est requis'],
+    trim: true,
+    maxlength: [20, 'Le numéro de carte ne peut pas dépasser 20 caractères']
+  },
+  cardPhoto: {
+    type: String,
+    required: [true, 'La photo de carte est requise']
+  },
+  faculty: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Le nom de la faculté ne peut pas dépasser 100 caractères']
+    // Note: Faculty is required for students - validation handled in controller
+  },
   isActive: {
     type: Boolean,
-    default: true
+    default: false // Changed to false by default - users need staff validation
   },
   isEmailVerified: {
     type: Boolean,

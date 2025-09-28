@@ -5,6 +5,92 @@ import crypto from 'crypto';
 import type { AuthRequest, ApiResponse } from '../types/index.js';
 import emailService from '../services/emailService';
 
+export const activateUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { user } = req;
+    const { userId } = req.params;
+    
+    // Check if user is staff
+    if (user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Seul le personnel peut activer les utilisateurs'
+      } as ApiResponse);
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      } as ApiResponse);
+    }
+
+    // Update user status
+    targetUser.isActive = true;
+    await targetUser.save();
+
+    res.json({
+      success: true,
+      message: 'Utilisateur activé avec succès',
+      data: { user: targetUser.toJSON() }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Activate user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'activation de l\'utilisateur'
+    } as ApiResponse);
+  }
+};
+
+export const deactivateUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { user } = req;
+    const { userId } = req.params;
+    
+    // Check if user is staff
+    if (user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Seul le personnel peut désactiver les utilisateurs'
+      } as ApiResponse);
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      } as ApiResponse);
+    }
+
+    // Prevent deactivating staff users
+    if (targetUser.role === 'staff') {
+      return res.status(400).json({
+        success: false,
+        message: 'Impossible de désactiver un membre du personnel'
+      } as ApiResponse);
+    }
+
+    // Update user status
+    targetUser.isActive = false;
+    await targetUser.save();
+
+    res.json({
+      success: true,
+      message: 'Utilisateur désactivé avec succès',
+      data: { user: targetUser.toJSON() }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Deactivate user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la désactivation de l\'utilisateur'
+    } as ApiResponse);
+  }
+};
+
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
     const { user } = req;

@@ -9,7 +9,9 @@ import {
   changePassword,
   sendEmailVerification,
   verifyEmail,
-  getUserStats
+  getUserStats,
+  activateUser,
+  deactivateUser
 } from '../controllers/userController.js';
 import { auth, requireRole } from '../middleware/auth.js';
 
@@ -35,5 +37,7 @@ router.get('/:id', requireRole('staff'), getUserById);
 router.post('/', requireRole('staff'), createUser);
 router.put('/:id', requireRole('staff'), updateUser);
 router.delete('/:id', requireRole('staff'), deleteUser);
+router.put('/:userId/activate', requireRole('staff'), activateUser);
+router.put('/:userId/deactivate', requireRole('staff'), deactivateUser);
 
 export default router;

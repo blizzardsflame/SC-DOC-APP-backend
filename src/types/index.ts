@@ -9,6 +9,9 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: 'student' | 'teacher' | 'staff';
+  cardNumber: string; // Numéro de la carte (Bibliothèque)
+  cardPhoto: string; // Photo de la carte (Bibliothèque)
+  faculty?: string; // Faculté (only for students)
   isActive: boolean;
   isEmailVerified: boolean;
   emailVerificationToken?: string;
