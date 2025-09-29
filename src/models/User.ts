@@ -72,6 +72,10 @@ const userSchema = new Schema<IUser>({
     type: Boolean,
     default: false
   },
+  isSuperAdmin: {
+    type: Boolean,
+    default: false
+  },
   emailVerificationToken: {
     type: String
   },

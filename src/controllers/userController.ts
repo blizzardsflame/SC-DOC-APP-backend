@@ -211,11 +211,11 @@ export const suspendUser = async (req: AuthRequest, res: Response) => {
       } as ApiResponse);
     }
 
-    // Prevent suspending staff users
-    if (targetUser.role === 'staff') {
-      return res.status(400).json({
+    // Prevent suspending staff users unless current user is super admin
+    if (targetUser.role === 'staff' && !user?.isSuperAdmin) {
+      return res.status(403).json({
         success: false,
-        message: 'Impossible de suspendre un membre du personnel'
+        message: 'Seul un super administrateur peut suspendre un membre du personnel'
       } as ApiResponse);
     }
 
@@ -272,11 +272,11 @@ export const banUser = async (req: AuthRequest, res: Response) => {
       } as ApiResponse);
     }
 
-    // Prevent banning staff users
-    if (targetUser.role === 'staff') {
-      return res.status(400).json({
+    // Prevent banning staff users unless current user is super admin
+    if (targetUser.role === 'staff' && !user?.isSuperAdmin) {
+      return res.status(403).json({
         success: false,
-        message: 'Impossible de bannir un membre du personnel'
+        message: 'Seul un super administrateur peut bannir un membre du personnel'
       } as ApiResponse);
     }
 

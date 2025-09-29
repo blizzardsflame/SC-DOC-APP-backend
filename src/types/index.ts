@@ -16,6 +16,7 @@ export interface IUser extends Document {
   isEmailVerified: boolean;
   isSuspended: boolean;
   isBanned: boolean;
+  isSuperAdmin: boolean;
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
   lastVerificationEmailSent?: Date;
