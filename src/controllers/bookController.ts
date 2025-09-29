@@ -25,9 +25,14 @@ export const getBooks = async (req: Request, res: Response) => {
     // Build search query
     const query: any = {};
 
-    // Text search
+    // Text search - flexible search across title, author, and ISBN
     if (search) {
-      query.$text = { $search: search };
+      const searchRegex = new RegExp(search, 'i'); // Case-insensitive regex
+      query.$or = [
+        { title: searchRegex },
+        { author: searchRegex },
+        { isbn: searchRegex }
+      ];
     }
 
     // Category filters

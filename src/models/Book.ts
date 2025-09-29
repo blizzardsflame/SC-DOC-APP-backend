@@ -83,7 +83,7 @@ const bookSchema = new Schema<IBook>({
 });
 
 // Indexes for better query performance
-bookSchema.index({ title: 'text', author: 'text', description: 'text' });
+bookSchema.index({ title: 'text', author: 'text', isbn: 'text', description: 'text' });
 bookSchema.index({ category: 1, subcategory: 1 });
 bookSchema.index({ language: 1, format: 1 });
 bookSchema.index({ publicationYear: 1 });
