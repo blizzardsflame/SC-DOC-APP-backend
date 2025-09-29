@@ -106,7 +106,7 @@ export const register = async (req: Request, res: Response) => {
 
     // Send verification email
     try {
-      const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email/${emailVerificationToken}`;
+      const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email`;
       
       await emailService.sendVerificationEmail({
         userEmail: email,
