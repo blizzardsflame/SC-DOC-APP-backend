@@ -189,6 +189,156 @@ export const getUserStats = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Suspend user (staff only)
+export const suspendUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { user } = req;
+    const { userId } = req.params;
+    
+    // Check if user is staff
+    if (user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Seul le personnel peut suspendre les utilisateurs'
+      } as ApiResponse);
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      } as ApiResponse);
+    }
+
+    // Prevent suspending staff users
+    if (targetUser.role === 'staff') {
+      return res.status(400).json({
+        success: false,
+        message: 'Impossible de suspendre un membre du personnel'
+      } as ApiResponse);
+    }
+
+    // Update user status
+    targetUser.isSuspended = true;
+    targetUser.isActive = false; // Suspended users are also inactive
+    await targetUser.save();
+
+    res.json({
+      success: true,
+      message: 'Utilisateur suspendu avec succès',
+      data: { user: targetUser.toJSON() }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Suspend user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la suspension de l\'utilisateur'
+    } as ApiResponse);
+  }
+};
+
+// Ban user (staff only)
+export const banUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { user } = req;
+    const { userId } = req.params;
+    
+    // Check if user is staff
+    if (user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Seul le personnel peut bannir les utilisateurs'
+      } as ApiResponse);
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      } as ApiResponse);
+    }
+
+    // Prevent banning staff users
+    if (targetUser.role === 'staff') {
+      return res.status(400).json({
+        success: false,
+        message: 'Impossible de bannir un membre du personnel'
+      } as ApiResponse);
+    }
+
+    // Update user status
+    targetUser.isBanned = true;
+    targetUser.isActive = false; // Banned users are also inactive
+    targetUser.isSuspended = true; // Banned users are also suspended
+    await targetUser.save();
+
+    res.json({
+      success: true,
+      message: 'Utilisateur banni avec succès',
+      data: { user: targetUser.toJSON() }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Ban user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du bannissement de l\'utilisateur'
+    } as ApiResponse);
+  }
+};
+
+// Promote teacher to staff (staff only)
+export const promoteToStaff = async (req: AuthRequest, res: Response) => {
+  try {
+    const { user } = req;
+    const { userId } = req.params;
+    
+    // Check if user is staff
+    if (user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Seul le personnel peut promouvoir des utilisateurs'
+      } as ApiResponse);
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      } as ApiResponse);
+    }
+
+    // Only teachers can be promoted to staff
+    if (targetUser.role !== 'teacher') {
+      return res.status(400).json({
+        success: false,
+        message: 'Seuls les enseignants peuvent être promus au personnel'
+      } as ApiResponse);
+    }
+
+    // Update user role
+    targetUser.role = 'staff';
+    targetUser.isActive = true; // Staff users are always active
+    targetUser.isSuspended = false; // Clear any suspension
+    targetUser.isBanned = false; // Clear any ban
+    await targetUser.save();
+
+    res.json({
+      success: true,
+      message: 'Utilisateur promu au personnel avec succès',
+      data: { user: targetUser.toJSON() }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Promote to staff error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la promotion de l\'utilisateur'
+    } as ApiResponse);
+  }
+};
+
 // Get user by ID
 export const getUserById = async (req: AuthRequest, res: Response) => {
   try {

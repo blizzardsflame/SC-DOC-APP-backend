@@ -64,6 +64,14 @@ const userSchema = new Schema<IUser>({
     type: Boolean,
     default: false
   },
+  isSuspended: {
+    type: Boolean,
+    default: false
+  },
+  isBanned: {
+    type: Boolean,
+    default: false
+  },
   emailVerificationToken: {
     type: String
   },

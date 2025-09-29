@@ -11,7 +11,10 @@ import {
   verifyEmail,
   getUserStats,
   activateUser,
-  deactivateUser
+  deactivateUser,
+  suspendUser,
+  banUser,
+  promoteToStaff
 } from '../controllers/userController.js';
 import { auth, requireRole } from '../middleware/auth.js';
 
@@ -39,5 +42,8 @@ router.put('/:id', requireRole('staff'), updateUser);
 router.delete('/:id', requireRole('staff'), deleteUser);
 router.put('/:userId/activate', requireRole('staff'), activateUser);
 router.put('/:userId/deactivate', requireRole('staff'), deactivateUser);
+router.put('/:userId/suspend', requireRole('staff'), suspendUser);
+router.put('/:userId/ban', requireRole('staff'), banUser);
+router.put('/:userId/promote-to-staff', requireRole('staff'), promoteToStaff);
 
 export default router;

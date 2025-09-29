@@ -14,6 +14,8 @@ export interface IUser extends Document {
   faculty?: string; // Faculté (only for students)
   isActive: boolean;
   isEmailVerified: boolean;
+  isSuspended: boolean;
+  isBanned: boolean;
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
   lastVerificationEmailSent?: Date;
