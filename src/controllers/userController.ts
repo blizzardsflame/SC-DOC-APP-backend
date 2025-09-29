@@ -219,6 +219,14 @@ export const suspendUser = async (req: AuthRequest, res: Response) => {
       } as ApiResponse);
     }
 
+    // Prevent users from suspending themselves
+    if (targetUser._id.toString() === user?._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vous ne pouvez pas vous suspendre vous-même'
+      } as ApiResponse);
+    }
+
     // Update user status
     targetUser.isSuspended = true;
     // Suspended users remain active (they're just restricted)
@@ -269,6 +277,14 @@ export const banUser = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({
         success: false,
         message: 'Impossible de bannir un membre du personnel'
+      } as ApiResponse);
+    }
+
+    // Prevent users from banning themselves
+    if (targetUser._id.toString() === user?._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vous ne pouvez pas vous bannir vous-même'
       } as ApiResponse);
     }
 
