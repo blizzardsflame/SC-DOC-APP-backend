@@ -15,6 +15,7 @@ import {
   suspendUser,
   banUser,
   promoteToStaff,
+  demoteStaff,
   liftSuspension,
   unbanUser
 } from '../controllers/userController.js';
@@ -49,5 +50,6 @@ router.put('/:userId/lift-suspension', requireRole('staff'), liftSuspension);
 router.put('/:userId/ban', requireRole('staff'), banUser);
 router.put('/:userId/unban', requireRole('staff'), unbanUser);
 router.put('/:userId/promote-to-staff', requireRole('staff'), promoteToStaff);
+router.put('/:userId/demote-staff', requireRole('staff'), demoteStaff);
 
 export default router;

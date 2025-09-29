@@ -393,11 +393,11 @@ export const promoteToStaff = async (req: AuthRequest, res: Response) => {
     const { user } = req;
     const { userId } = req.params;
     
-    // Check if user is staff
-    if (user?.role !== 'staff') {
+    // Check if user is staff and super admin
+    if (user?.role !== 'staff' || !user?.isSuperAdmin) {
       return res.status(403).json({
         success: false,
-        message: 'Accès refusé - Seul le personnel peut promouvoir des utilisateurs'
+        message: 'Accès refusé - Seul un super administrateur peut promouvoir des utilisateurs'
       } as ApiResponse);
     }
 
@@ -434,6 +434,63 @@ export const promoteToStaff = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la promotion de l\'utilisateur'
+    } as ApiResponse);
+  }
+};
+
+// Demote staff to teacher (super admin only)
+export const demoteStaff = async (req: AuthRequest, res: Response) => {
+  try {
+    const { user } = req;
+    const { userId } = req.params;
+    
+    // Check if user is staff and super admin
+    if (user?.role !== 'staff' || !user?.isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Seul un super administrateur peut rétrograder des utilisateurs'
+      } as ApiResponse);
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      } as ApiResponse);
+    }
+
+    // Only staff can be demoted to teacher
+    if (targetUser.role !== 'staff') {
+      return res.status(400).json({
+        success: false,
+        message: 'Seuls les membres du personnel peuvent être rétrogradés'
+      } as ApiResponse);
+    }
+
+    // Prevent demoting yourself
+    if (targetUser._id.toString() === user?._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vous ne pouvez pas vous rétrograder vous-même'
+      } as ApiResponse);
+    }
+
+    // Update user role
+    targetUser.role = 'teacher';
+    targetUser.isSuperAdmin = false; // Remove super admin privileges when demoting
+    await targetUser.save();
+
+    res.json({
+      success: true,
+      message: 'Utilisateur rétrogradé avec succès',
+      data: { user: targetUser.toJSON() }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Demote staff error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la rétrogradation de l\'utilisateur'
     } as ApiResponse);
   }
 };
