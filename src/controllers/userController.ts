@@ -221,7 +221,11 @@ export const suspendUser = async (req: AuthRequest, res: Response) => {
 
     // Update user status
     targetUser.isSuspended = true;
-    targetUser.isActive = false; // Suspended users are also inactive
+    // Suspended users remain active (they're just restricted)
+    // Only pending users have isActive: false
+    if (!targetUser.isActive && !targetUser.isBanned) {
+      targetUser.isActive = true; // Activate if they were pending
+    }
     await targetUser.save();
 
     res.json({
@@ -270,8 +274,8 @@ export const banUser = async (req: AuthRequest, res: Response) => {
 
     // Update user status
     targetUser.isBanned = true;
-    targetUser.isActive = false; // Banned users are also inactive
-    targetUser.isSuspended = true; // Banned users are also suspended
+    // Banned users can have any suspension status - ban overrides everything
+    // Don't change isActive or isSuspended - ban status is what matters
     await targetUser.save();
 
     res.json({
@@ -284,6 +288,86 @@ export const banUser = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors du bannissement de l\'utilisateur'
+    } as ApiResponse);
+  }
+};
+
+// Lift suspension (staff only)
+export const liftSuspension = async (req: AuthRequest, res: Response) => {
+  try {
+    const { user } = req;
+    const { userId } = req.params;
+    
+    // Check if user is staff
+    if (user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Seul le personnel peut lever les suspensions'
+      } as ApiResponse);
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      } as ApiResponse);
+    }
+
+    // Update user status
+    targetUser.isSuspended = false;
+    await targetUser.save();
+
+    res.json({
+      success: true,
+      message: 'Suspension levée avec succès',
+      data: { user: targetUser.toJSON() }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Lift suspension error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la levée de suspension'
+    } as ApiResponse);
+  }
+};
+
+// Unban user (staff only)
+export const unbanUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { user } = req;
+    const { userId } = req.params;
+    
+    // Check if user is staff
+    if (user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Seul le personnel peut débannir les utilisateurs'
+      } as ApiResponse);
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      } as ApiResponse);
+    }
+
+    // Update user status
+    targetUser.isBanned = false;
+    await targetUser.save();
+
+    res.json({
+      success: true,
+      message: 'Utilisateur débanni avec succès',
+      data: { user: targetUser.toJSON() }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Unban user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du débannissement de l\'utilisateur'
     } as ApiResponse);
   }
 };
