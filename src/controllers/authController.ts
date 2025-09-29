@@ -157,22 +157,8 @@ export const login = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    // Check if email is verified
-    if (!user.isEmailVerified) {
-      return res.status(401).json({
-        success: false,
-        message: 'Veuillez vérifier votre email avant de vous connecter. Vérifiez votre boîte de réception.',
-        requiresEmailVerification: true
-      } as ApiResponse);
-    }
-
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Compte en attente de validation par le personnel.'
-      } as ApiResponse);
-    }
+    // Note: Users can login even if email is not verified or account is not active
+    // Email verification and account activation are optional for login
 
     // Verify password
     const isPasswordValid = await user.comparePassword(password);
