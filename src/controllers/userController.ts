@@ -274,8 +274,7 @@ export const banUser = async (req: AuthRequest, res: Response) => {
 
     // Update user status
     targetUser.isBanned = true;
-    // Banned users can have any suspension status - ban overrides everything
-    // Don't change isActive or isSuspended - ban status is what matters
+    targetUser.isSuspended = false; // Clear suspension when banning
     await targetUser.save();
 
     res.json({
