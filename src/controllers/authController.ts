@@ -20,7 +20,7 @@ const generateToken = (userId: string): string => {
 export const register = async (req: Request, res: Response) => {
   try {
     const { firstname, lastname, email, password, role, cardNumber, faculty } = req.body;
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const file = req.file; // multer.single() puts the file in req.file
 
     // Validate required fields
     if (!firstname || !lastname || !email || !password || !cardNumber) {
@@ -31,7 +31,7 @@ export const register = async (req: Request, res: Response) => {
     }
 
     // Validate card photo upload
-    if (!files || !files.cardPhoto || !files.cardPhoto[0]) {
+    if (!file) {
       return res.status(400).json({
         success: false,
         message: 'La photo de carte est requise'
@@ -60,15 +60,13 @@ export const register = async (req: Request, res: Response) => {
     if (existingCard) {
       return res.status(400).json({
         success: false,
-        message: 'Ce numéro de carte est déjà utilisé'
       } as ApiResponse);
     }
 
     // Handle card photo upload
     let cardPhotoPath = '';
-    if (files.cardPhoto && files.cardPhoto[0]) {
-      const cardPhotoFile = files.cardPhoto[0];
-      const cardPhotoFileName = `${Date.now()}-${cardPhotoFile.originalname}`;
+    if (file) {
+      const cardPhotoFileName = `${Date.now()}-${file.originalname}`;
       const cardPhotoDir = path.join(process.cwd(), 'uploads', 'cards');
       
       // Ensure directory exists
@@ -77,11 +75,11 @@ export const register = async (req: Request, res: Response) => {
       }
       
       const fullCardPhotoPath = path.join(cardPhotoDir, cardPhotoFileName);
+      fs.writeFileSync(fullCardPhotoPath, file.buffer);
       
-      // Save file to disk
-      fs.writeFileSync(fullCardPhotoPath, cardPhotoFile.buffer);
+      // Store relative path for database
       cardPhotoPath = `/uploads/cards/${cardPhotoFileName}`;
-      console.log('Card photo saved:', cardPhotoFileName, cardPhotoFile.size, 'bytes');
+      console.log('Card photo saved:', cardPhotoFileName, file.size, 'bytes');
     }
 
     // Generate email verification token

@@ -49,8 +49,17 @@ export const registerSchema = Joi.object({
       'string.min': 'Le mot de passe doit contenir au moins 6 caractères',
       'string.empty': 'Le mot de passe est requis'
     }),
-  role: Joi.string().valid('student', 'teacher', 'staff').default('student')
-});
+  role: Joi.string().valid('student', 'teacher', 'staff').default('student'),
+  cardNumber: Joi.string().trim().min(1).max(20).required()
+    .messages({
+      'string.empty': 'Le numéro de carte est requis',
+      'string.max': 'Le numéro de carte ne peut pas dépasser 20 caractères'
+    }),
+  faculty: Joi.string().trim().max(100).optional().allow('')
+    .messages({
+      'string.max': 'Le nom de la faculté ne peut pas dépasser 100 caractères'
+    })
+}).unknown(true); // Allow file uploads (cardPhoto) to pass through
 
 export const loginSchema = Joi.object({
   email: Joi.string().email().required()
