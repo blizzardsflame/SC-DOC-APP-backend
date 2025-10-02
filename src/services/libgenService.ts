@@ -871,13 +871,27 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
    * Import a LibGen book into the local database
    */
   async importBook(libgenBook: LibGenBook, categoryId: string, downloadedFilePath: string) {
+    // Map LibGen language names to our language codes
+    const languageMap: { [key: string]: string } = {
+      'english': 'en',
+      'français': 'fr',
+      'french': 'fr',
+      'العربية': 'ar',
+      'arabic': 'ar',
+      'arabe': 'ar'
+    };
+
+    // Get language code from LibGen language, default to 'en'
+    const libgenLanguage = (libgenBook.language || 'English').toLowerCase();
+    const mappedLanguage = languageMap[libgenLanguage] || 'en';
+
     // This would integrate with your existing Book model
     const bookData = {
       title: libgenBook.title,
       author: libgenBook.author,
       description: `Imported from LibGen. Year: ${libgenBook.year}, Pages: ${libgenBook.pages}`,
       category: categoryId,
-      language: libgenBook.language || 'English',
+      language: mappedLanguage,
       publicationYear: libgenBook.year ? parseInt(libgenBook.year) : undefined,
       format: (libgenBook.extension?.toLowerCase() === 'epub' ? 'epub' : 'pdf') as 'pdf' | 'epub',
       filePath: downloadedFilePath,
