@@ -377,3 +377,78 @@ export const deleteBook = async (req: AuthRequest, res: Response) => {
     } as ApiResponse);
   }
 };
+
+export const downloadBook = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Find the book
+    const book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: 'Livre non trouvé'
+      } as ApiResponse);
+    }
+
+    // Check if book is downloadable
+    if (!book.isDownloadable) {
+      return res.status(403).json({
+        success: false,
+        message: 'Ce livre n\'est pas disponible en téléchargement'
+      } as ApiResponse);
+    }
+
+    // Check if file exists
+    if (!book.filePath) {
+      return res.status(404).json({
+        success: false,
+        message: 'Fichier du livre non trouvé'
+      } as ApiResponse);
+    }
+
+    // Construct full file path
+    const fullFilePath = path.join(process.cwd(), book.filePath);
+    
+    // Check if file exists on disk
+    if (!fs.existsSync(fullFilePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Fichier du livre non trouvé sur le serveur'
+      } as ApiResponse);
+    }
+
+    // Get file stats
+    const stats = fs.statSync(fullFilePath);
+    
+    // Set appropriate headers
+    const fileName = `${book.title}.${book.format}`;
+    const cleanFileName = fileName.replace(/[^a-zA-Z0-9\-_\.\s]/g, ''); // Remove special characters
+    
+    res.setHeader('Content-Type', book.format === 'pdf' ? 'application/pdf' : 'application/epub+zip');
+    res.setHeader('Content-Length', stats.size);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(cleanFileName)}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Stream the file
+    const fileStream = fs.createReadStream(fullFilePath);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (error) => {
+      console.error('File stream error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: 'Erreur lors du téléchargement du fichier'
+        } as ApiResponse);
+      }
+    });
+
+  } catch (error) {
+    console.error('Download book error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du téléchargement du livre'
+    } as ApiResponse);
+  }
+};

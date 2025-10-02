@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { getBooks, getBook, createBook, updateBook, deleteBook } from '../controllers/bookController.js';
+import { getBooks, getBook, createBook, updateBook, deleteBook, downloadBook } from '../controllers/bookController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { validate, bookSchema } from '../middleware/validation.js';
 
@@ -37,6 +37,9 @@ const upload = multer({
 // Public routes
 router.get('/', getBooks);
 router.get('/:id', getBook);
+
+// Download route - requires authentication
+router.get('/:id/download', authenticate, downloadBook);
 
 // Protected routes - Staff only for CUD operations
 router.post('/', 
