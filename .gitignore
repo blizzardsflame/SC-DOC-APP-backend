@@ -110,3 +110,4 @@ Thumbs.db
 # File uploads (keep structure but ignore content)
 uploads/*
 !uploads/.gitkeep
+libgenStructure.md
