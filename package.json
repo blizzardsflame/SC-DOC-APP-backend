@@ -11,7 +11,7 @@
     "test": "vitest",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write src/**/*.ts",
-    "seed": "tsx src/utils/seeder.ts"
+    "seed": "tsx src/scripts/seedDatabase.ts"
   },
   "dependencies": {
     "axios": "^1.12.2",

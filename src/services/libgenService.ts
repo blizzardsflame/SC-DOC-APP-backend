@@ -811,7 +811,11 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
         if (mirror.includes('library.lol')) {
           downloadLinks.push(`${mirror}/main/${md5}`);
         } else if (mirror.includes('libgen.li')) {
-          downloadLinks.push(`${mirror}/ads.php?md5=${md5}`);
+          // Extract actual download URL from ads page
+          const actualUrl = await this.extractActualDownloadUrl(`${mirror}/ads.php?md5=${md5}`);
+          if (actualUrl) {
+            downloadLinks.push(actualUrl);
+          }
         } else {
           downloadLinks.push(`${mirror}/book/index.php?md5=${md5}`);
         }
@@ -821,6 +825,90 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
     }
 
     return downloadLinks;
+  }
+
+  /**
+   * Extract actual download URL with key from LibGen ads page
+   */
+  private async extractActualDownloadUrl(adsUrl: string): Promise<string | null> {
+    try {
+      console.log(`Extracting actual download URL from: ${adsUrl}`);
+      
+      const response = await axios.get(adsUrl, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Connection': 'keep-alive'
+        },
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: false,
+          keepAlive: true
+        }),
+        maxRedirects: 5
+      });
+
+      const $ = cheerio.load(response.data);
+      let actualDownloadUrl: string | null = null;
+      
+      // Method 1: Look for GET button with get.php?md5=...&key=...
+      $('a[href*="get.php"]').each((index, element) => {
+        const href = $(element).attr('href');
+        if (href && href.includes('key=') && href.includes('md5=')) {
+          const baseUrl = adsUrl.split('/ads.php')[0];
+          actualDownloadUrl = href.startsWith('/') ? baseUrl + href : 
+                             href.startsWith('http') ? href : baseUrl + '/' + href;
+          console.log(`✓ Found GET link: ${actualDownloadUrl}`);
+          return false; // Break loop
+        }
+      });
+      
+      // Method 2: Look for any link with key parameter
+      if (!actualDownloadUrl) {
+        $('a[href*="key="]').each((index, element) => {
+          const href = $(element).attr('href');
+          if (href && href.includes('md5=')) {
+            const baseUrl = adsUrl.split('/ads.php')[0];
+            actualDownloadUrl = href.startsWith('/') ? baseUrl + href : 
+                               href.startsWith('http') ? href : baseUrl + '/' + href;
+            console.log(`✓ Found key link: ${actualDownloadUrl}`);
+            return false;
+          }
+        });
+      }
+      
+      // Method 3: Look in button onclick events
+      if (!actualDownloadUrl) {
+        $('button, input[type="button"], input[type="submit"]').each((index, element) => {
+          const onclick = $(element).attr('onclick');
+          if (onclick) {
+            const urlMatch = onclick.match(/(?:location\.href|window\.open)\s*=\s*['"]([^'"]+get\.php[^'"]*key=[^'"]+)['"]/) ||
+                           onclick.match(/['"]([^'"]*get\.php[^'"]*key=[^'"]+)['"]/);
+            if (urlMatch) {
+              let url = urlMatch[1];
+              const baseUrl = adsUrl.split('/ads.php')[0];
+              actualDownloadUrl = url.startsWith('/') ? baseUrl + url : 
+                                 url.startsWith('http') ? url : baseUrl + '/' + url;
+              console.log(`✓ Found onclick link: ${actualDownloadUrl}`);
+              return false;
+            }
+          }
+        });
+      }
+      
+      if (actualDownloadUrl) {
+        console.log(`✅ Successfully extracted download URL: ${actualDownloadUrl}`);
+        return actualDownloadUrl;
+      } else {
+        console.log(`❌ Could not find download URL in ads page`);
+        return null;
+      }
+      
+    } catch (error: any) {
+      console.error(`Error extracting download URL from ${adsUrl}:`, error.message);
+      return null;
+    }
   }
 
   /**

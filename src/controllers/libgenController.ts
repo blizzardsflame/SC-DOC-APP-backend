@@ -103,6 +103,56 @@ export const getDownloadLinks = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Get direct download URL for a book (bypassing ads page)
+export const getDirectDownloadUrl = async (req: AuthRequest, res: Response) => {
+  try {
+    const { user } = req;
+
+    if (user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé - Seul le personnel peut obtenir les liens de téléchargement direct'
+      } as ApiResponse);
+    }
+
+    const { md5 } = req.params;
+
+    if (!md5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Hash MD5 requis'
+      } as ApiResponse);
+    }
+
+    // Get the actual download links (with extracted keys)
+    const downloadLinks = await libgenService.getDownloadLinks(md5);
+
+    if (downloadLinks.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Aucun lien de téléchargement direct trouvé'
+      } as ApiResponse);
+    }
+
+    // Return all available direct download links
+    res.json({
+      success: true,
+      message: 'Liens de téléchargement direct obtenus',
+      data: { 
+        directDownloadUrls: downloadLinks,
+        count: downloadLinks.length
+      }
+    } as ApiResponse);
+  } catch (error: any) {
+    console.error('Get direct download URL error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'obtention du lien de téléchargement direct',
+      error: error.message
+    } as ApiResponse);
+  }
+};
+
 // Download and import a book from LibGen
 export const downloadAndImportBook = async (req: AuthRequest, res: Response) => {
   try {

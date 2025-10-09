@@ -4,6 +4,7 @@ import {
   startLibGenSearch,
   getLibGenSearchStatus,
   getDownloadLinks,
+  getDirectDownloadUrl,
   downloadAndImportBook,
   getBookDetails
 } from '../controllers/libgenController.js';
@@ -26,6 +27,9 @@ router.get('/search/status/:searchId', getLibGenSearchStatus);
 
 // Get download links for a specific book
 router.get('/download-links/:md5', getDownloadLinks);
+
+// Get direct download URL (bypassing ads page)
+router.get('/direct-download/:md5', getDirectDownloadUrl);
 
 // Get book details by MD5
 router.get('/details/:md5', getBookDetails);
