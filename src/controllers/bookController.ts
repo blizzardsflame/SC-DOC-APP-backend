@@ -18,6 +18,7 @@ export const getBooks = async (req: Request, res: Response) => {
       publicationYear,
       isDownloadable,
       availability,
+      availabilityType,
       sort = 'createdAt',
       order = 'desc'
     } = req.query as BookSearchQuery;
@@ -61,6 +62,36 @@ export const getBooks = async (req: Request, res: Response) => {
         query.availableCopies = { $gt: 0 };
       } else if (availability === 'unavailable') {
         query.availableCopies = 0;
+      }
+    }
+    
+    // Availability type filter
+    if (availabilityType) {
+      if (availabilityType === 'physical') {
+        // Physical only: has physical copies but no digital file
+        query.physicalCopies = { $gt: 0 };
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { filePath: { $exists: false } },
+            { filePath: null },
+            { filePath: '' }
+          ]
+        });
+      } else if (availabilityType === 'digital') {
+        // Digital only: has digital file but no physical copies
+        query.$and = query.$and || [];
+        query.$and.push(
+          { filePath: { $exists: true, $ne: null, $ne: '' } },
+          { physicalCopies: { $lte: 0 } }
+        );
+      } else if (availabilityType === 'both') {
+        // Both: has physical copies AND digital file
+        query.$and = query.$and || [];
+        query.$and.push(
+          { physicalCopies: { $gt: 0 } },
+          { filePath: { $exists: true, $ne: null, $ne: '' } }
+        );
       }
     }
 

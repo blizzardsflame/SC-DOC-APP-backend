@@ -123,4 +123,5 @@ export interface BookSearchQuery extends PaginationQuery {
   publicationYear?: number;
   isDownloadable?: boolean;
   availability?: 'available' | 'unavailable';
+  availabilityType?: 'physical' | 'digital' | 'both';
 }

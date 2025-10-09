@@ -1073,22 +1073,61 @@ async function seedBooks(categoryMap: Map<string, any>) {
       const randomCategory =
         categories[Math.floor(Math.random() * categories.length)];
 
-      const book = new Book({
+      // Create different availability types for testing filters
+      const availabilityTypes = ['physical', 'digital', 'both'];
+      const availabilityType = availabilityTypes[i % 3]; // Cycle through types
+      
+      let bookConfig: any = {
         ...bookData,
         category: randomCategory._id,
-        physicalCopies: Math.floor(Math.random() * 5) + 1, // 1-5 copies
-        availableCopies: Math.floor(Math.random() * 3) + 1, // 1-3 available
-        isDownloadable: Math.random() > 0.5, // 50% chance
-        filePath:
-          bookData.format === "pdf"
-            ? "/uploads/books/sample.pdf"
-            : "/uploads/books/sample.epub",
         coverImage: "/uploads/covers/default-cover.jpg",
-      });
+      };
+      
+      // Configure based on availability type
+      switch (availabilityType) {
+        case 'physical':
+          // Physical only: has copies but no digital file
+          bookConfig = {
+            ...bookConfig,
+            physicalCopies: Math.floor(Math.random() * 5) + 1, // 1-5 copies
+            availableCopies: Math.floor(Math.random() * 3) + 1, // 1-3 available
+            isDownloadable: false,
+            filePath: null, // No digital file
+          };
+          break;
+          
+        case 'digital':
+          // Digital only: has file but no physical copies
+          bookConfig = {
+            ...bookConfig,
+            physicalCopies: 0, // No physical copies
+            availableCopies: 0,
+            isDownloadable: true,
+            filePath: (bookData as any)?.format === "pdf"
+              ? "/uploads/books/sample.pdf"
+              : "/uploads/books/sample.epub",
+          };
+          break;
+          
+        case 'both':
+          // Both: has physical copies AND digital file
+          bookConfig = {
+            ...bookConfig,
+            physicalCopies: Math.floor(Math.random() * 5) + 1, // 1-5 copies
+            availableCopies: Math.floor(Math.random() * 3) + 1, // 1-3 available
+            isDownloadable: true,
+            filePath: (bookData as any)?.format === "pdf"
+              ? "/uploads/books/sample.pdf"
+              : "/uploads/books/sample.epub",
+          };
+          break;
+      }
 
+      const book = new Book(bookConfig);
       const savedBook = await book.save();
       books.push(savedBook);
-      console.log(`  ✅ Livre créé: ${bookData.title} par ${bookData.author}`);
+      
+      console.log(`  ✅ Livre créé: ${(bookData as any)?.title} par ${(bookData as any)?.author} [${availabilityType?.toUpperCase()}]`);
     }
 
     console.log(`✅ ${books.length} livres créés`);
