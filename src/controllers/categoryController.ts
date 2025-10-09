@@ -122,8 +122,8 @@ export const createCategory = async (req: AuthRequest, res: Response) => {
   try {
     const { name, parent, description } = req.body;
 
-    // Check if parent category exists if provided
-    if (parent) {
+    // Check if parent category exists if provided (and not empty string)
+    if (parent && parent.trim() !== '') {
       const parentCategory = await Category.findById(parent);
       if (!parentCategory) {
         return res.status(400).json({
@@ -171,8 +171,8 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { name, parent, description } = req.body;
 
-    // Check if parent category exists if provided
-    if (parent) {
+    // Check if parent category exists if provided (and not empty string)
+    if (parent && parent.trim() !== '') {
       const parentCategory = await Category.findById(parent);
       if (!parentCategory) {
         return res.status(400).json({

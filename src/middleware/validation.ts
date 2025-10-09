@@ -136,7 +136,7 @@ export const categorySchema = Joi.object({
       'string.empty': 'Le nom de la catégorie est requis',
       'string.max': 'Le nom ne peut pas dépasser 100 caractères'
     }),
-  parent: Joi.string().optional(),
+  parent: Joi.string().allow('', null).optional(),
   description: Joi.string().trim().max(500).optional()
 });
 
