@@ -764,131 +764,191 @@ const frenchBooks = [
   {
     title: "Les Misérables",
     author: "Victor Hugo",
+    isbn: "9782070409228",
     description:
       "Un roman épique sur la justice sociale et la rédemption dans la France du 19e siècle.",
     language: "fr",
     format: "pdf",
     publicationYear: 1862,
+    publisher: "Gallimard",
+    pages: 1232,
+    tags: ["roman", "classique", "littérature française", "19e siècle", "justice sociale"]
   },
   {
     title: "Le Petit Prince",
     author: "Antoine de Saint-Exupéry",
+    isbn: "9782070408504",
     description:
       "Un conte philosophique et poétique sous l'apparence d'un conte pour enfants.",
     language: "fr",
     format: "epub",
     publicationYear: 1943,
+    publisher: "Gallimard",
+    pages: 96,
+    tags: ["conte", "philosophie", "enfants", "aviation", "amitié"]
   },
   {
     title: "L'Étranger",
     author: "Albert Camus",
+    isbn: "9782070360024",
     description:
       "Un roman existentialiste sur l'absurdité de la condition humaine.",
     language: "fr",
     format: "pdf",
     publicationYear: 1942,
+    publisher: "Gallimard",
+    pages: 186,
+    tags: ["existentialisme", "absurde", "philosophie", "algérie", "condition humaine"]
   },
   {
     title: "Madame Bovary",
     author: "Gustave Flaubert",
+    isbn: "9782070413119",
     description:
       "L'histoire tragique d'Emma Bovary, une femme rêveuse et romantique.",
     language: "fr",
     format: "epub",
     publicationYear: 1857,
+    publisher: "Gallimard",
+    pages: 464,
+    tags: ["roman", "réalisme", "tragédie", "femme", "bourgeoisie"]
   },
   {
     title: "Le Rouge et le Noir",
     author: "Stendhal",
+    isbn: "9782070413126",
     description:
       "L'ascension sociale de Julien Sorel dans la France de la Restauration.",
     language: "fr",
     format: "pdf",
     publicationYear: 1830,
+    publisher: "Gallimard",
+    pages: 720,
+    tags: ["roman", "ascension sociale", "restauration", "ambition", "amour"]
   },
   {
     title: "Germinal",
     author: "Émile Zola",
+    isbn: "9782070368228",
     description:
       "Un roman sur les conditions de vie des mineurs au 19e siècle.",
     language: "fr",
     format: "epub",
     publicationYear: 1885,
+    publisher: "Gallimard",
+    pages: 592,
+    tags: ["naturalisme", "mineurs", "conditions sociales", "grève", "prolétariat"]
   },
   {
     title: "Notre-Dame de Paris",
     author: "Victor Hugo",
+    isbn: "9782070409235",
     description: "L'histoire d'amour tragique entre Quasimodo et Esmeralda.",
     language: "fr",
     format: "pdf",
     publicationYear: 1831,
+    publisher: "Gallimard",
+    pages: 752,
+    tags: ["roman gothique", "moyen âge", "paris", "cathédrale", "amour tragique"]
   },
   {
     title: "Candide",
     author: "Voltaire",
+    isbn: "9782070360031",
     description: "Un conte philosophique satirique sur l'optimisme.",
     language: "fr",
     format: "epub",
     publicationYear: 1759,
+    publisher: "Gallimard",
+    pages: 144,
+    tags: ["conte philosophique", "satire", "optimisme", "siècle des lumières", "critique sociale"]
   },
   {
     title: "Les Fleurs du mal",
     author: "Charles Baudelaire",
+    isbn: "9782070322190",
     description: "Un recueil de poèmes sur la beauté, l'amour et la mort.",
     language: "fr",
     format: "pdf",
     publicationYear: 1857,
+    publisher: "Gallimard",
+    pages: 416,
+    tags: ["poésie", "symbolisme", "beauté", "spleen", "modernité"]
   },
   {
     title: "À la recherche du temps perdu",
     author: "Marcel Proust",
+    isbn: "9782070108930",
     description: "Une œuvre monumentale sur la mémoire et le temps qui passe.",
     language: "fr",
     format: "epub",
     publicationYear: 1913,
+    publisher: "Gallimard",
+    pages: 4215,
+    tags: ["roman fleuve", "mémoire", "temps", "société", "introspection"]
   },
   {
     title: "Introduction à l'informatique",
     author: "Jean-Pierre Dupont",
+    isbn: "9782100789456",
     description:
       "Guide complet pour comprendre les bases de l'informatique moderne.",
     language: "fr",
     format: "pdf",
     publicationYear: 2020,
+    publisher: "Dunod",
+    pages: 384,
+    tags: ["informatique", "programmation", "algorithmique", "bases de données", "réseaux"]
   },
   {
     title: "Mathématiques appliquées",
     author: "Marie Dubois",
+    isbn: "9782100798765",
     description:
       "Concepts mathématiques essentiels pour les étudiants en sciences.",
     language: "fr",
     format: "epub",
     publicationYear: 2019,
+    publisher: "Dunod",
+    pages: 456,
+    tags: ["mathématiques", "analyse", "algèbre", "statistiques", "sciences"]
   },
   {
     title: "Histoire de France",
     author: "Pierre Martin",
+    isbn: "9782130789123",
     description:
       "Panorama complet de l'histoire française des origines à nos jours.",
     language: "fr",
     format: "pdf",
     publicationYear: 2021,
+    publisher: "PUF",
+    pages: 672,
+    tags: ["histoire", "france", "chronologie", "civilisation", "politique"]
   },
   {
     title: "Biologie cellulaire",
     author: "Sophie Laurent",
+    isbn: "9782294765432",
     description: "Étude approfondie des cellules et de leurs fonctions.",
     language: "fr",
     format: "epub",
     publicationYear: 2020,
+    publisher: "Elsevier Masson",
+    pages: 528,
+    tags: ["biologie", "cellule", "génétique", "biochimie", "physiologie"]
   },
   {
     title: "Chimie organique",
     author: "François Bernard",
+    isbn: "9782100754321",
     description: "Principes fondamentaux de la chimie des composés carbonés.",
     language: "fr",
     format: "pdf",
     publicationYear: 2018,
+    publisher: "Dunod",
+    pages: 612,
+    tags: ["chimie", "organique", "molécules", "synthèse", "réactions"]
   },
 ];
 
