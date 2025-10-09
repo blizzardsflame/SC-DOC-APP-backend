@@ -43,12 +43,15 @@ export interface IBook extends Document {
   subcategory?: string;
   language: string;
   publicationYear?: number;
+  publisher?: string;
+  pages?: number;
   format: 'pdf' | 'epub';
   filePath: string;
   coverImage?: string;
   isDownloadable: boolean;
   physicalCopies: number;
   availableCopies: number;
+  tags?: string[];
   createdAt: Date;
   updatedAt: Date;
 }

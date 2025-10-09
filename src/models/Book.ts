@@ -48,6 +48,15 @@ const bookSchema = new Schema<IBook>({
     min: [1000, 'L\'année de publication doit être valide'],
     max: [new Date().getFullYear(), 'L\'année de publication ne peut pas être dans le futur']
   },
+  publisher: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Le nom de l\'éditeur ne peut pas dépasser 100 caractères']
+  },
+  pages: {
+    type: Number,
+    min: [1, 'Le nombre de pages doit être positif']
+  },
   format: {
     type: String,
     required: [true, 'Le format est requis'],
@@ -77,6 +86,10 @@ const bookSchema = new Schema<IBook>({
     type: Number,
     default: 0,
     min: [0, 'Le nombre de copies disponibles ne peut pas être négatif']
+  },
+  tags: {
+    type: [String],
+    default: []
   }
 }, {
   timestamps: true

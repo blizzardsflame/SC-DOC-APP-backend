@@ -207,6 +207,9 @@ export const createBook = async (req: AuthRequest, res: Response) => {
     if (bookData.publicationYear) {
       bookData.publicationYear = parseInt(bookData.publicationYear);
     }
+    if (bookData.pages) {
+      bookData.pages = parseInt(bookData.pages);
+    }
     if (bookData.physicalCopies) {
       bookData.physicalCopies = parseInt(bookData.physicalCopies);
     }
@@ -312,6 +315,9 @@ export const updateBook = async (req: AuthRequest, res: Response) => {
     // Convert string numbers to actual numbers
     if (updateData.publicationYear) {
       updateData.publicationYear = parseInt(updateData.publicationYear);
+    }
+    if (updateData.pages) {
+      updateData.pages = parseInt(updateData.pages);
     }
     if (updateData.physicalCopies) {
       updateData.physicalCopies = parseInt(updateData.physicalCopies);

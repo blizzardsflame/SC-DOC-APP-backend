@@ -101,6 +101,7 @@ export const bookSchema = Joi.object({
     }),
   publicationYear: Joi.number().integer().min(1000).max(new Date().getFullYear()).optional(),
   publisher: Joi.string().trim().max(100).optional().allow(''),
+  pages: Joi.number().integer().min(1).optional(),
   format: Joi.string().valid('pdf', 'epub').required()
     .messages({
       'any.only': 'Le format doit être PDF ou EPUB'
