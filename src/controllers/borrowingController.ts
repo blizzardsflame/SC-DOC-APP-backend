@@ -52,8 +52,15 @@ export const getBorrowings = async (req: AuthRequest, res: Response) => {
     }
 
     const borrowings = await Borrowing.find(query)
-      .populate('user', 'firstname lastname email')
-      .populate('book', 'title author isbn format')
+      .populate('user', 'firstname lastname email cardNumber role')
+      .populate('book', 'title author isbn format category')
+      .populate({
+        path: 'book',
+        populate: {
+          path: 'category',
+          select: 'name'
+        }
+      })
       .sort({ createdAt: -1 });
 
     res.json({
@@ -134,8 +141,15 @@ export const createBorrowing = async (req: AuthRequest, res: Response) => {
     await book.save();
 
     const populatedBorrowing = await Borrowing.findById(borrowing._id)
-      .populate('user', 'firstname lastname email')
-      .populate('book', 'title author isbn format');
+      .populate('user', 'firstname lastname email cardNumber role')
+      .populate('book', 'title author isbn format category')
+      .populate({
+        path: 'book',
+        populate: {
+          path: 'category',
+          select: 'name'
+        }
+      });
 
     res.status(201).json({
       success: true,
@@ -232,8 +246,15 @@ export const createBorrowingForUser = async (req: AuthRequest, res: Response) =>
     await book.save();
 
     const populatedBorrowing = await Borrowing.findById(borrowing._id)
-      .populate('user', 'firstname lastname email')
-      .populate('book', 'title author isbn format');
+      .populate('user', 'firstname lastname email cardNumber role')
+      .populate('book', 'title author isbn format category')
+      .populate({
+        path: 'book',
+        populate: {
+          path: 'category',
+          select: 'name'
+        }
+      });
 
     res.status(201).json({
       success: true,
@@ -290,8 +311,15 @@ export const returnBook = async (req: AuthRequest, res: Response) => {
     }
 
     const populatedBorrowing = await Borrowing.findById(borrowing._id)
-      .populate('user', 'firstname lastname email')
-      .populate('book', 'title author isbn format');
+      .populate('user', 'firstname lastname email cardNumber role')
+      .populate('book', 'title author isbn format category')
+      .populate({
+        path: 'book',
+        populate: {
+          path: 'category',
+          select: 'name'
+        }
+      });
 
     res.json({
       success: true,
@@ -348,8 +376,15 @@ export const renewBorrowing = async (req: AuthRequest, res: Response) => {
     await borrowing.save();
 
     const populatedBorrowing = await Borrowing.findById(borrowing._id)
-      .populate('user', 'firstname lastname email')
-      .populate('book', 'title author isbn format');
+      .populate('user', 'firstname lastname email cardNumber role')
+      .populate('book', 'title author isbn format category')
+      .populate({
+        path: 'book',
+        populate: {
+          path: 'category',
+          select: 'name'
+        }
+      });
 
     res.json({
       success: true,
@@ -371,8 +406,15 @@ export const getOverdueBooks = async (req: Request, res: Response) => {
       status: 'active',
       dueDate: { $lt: new Date() }
     })
-      .populate('user', 'firstname lastname email')
-      .populate('book', 'title author isbn')
+      .populate('user', 'firstname lastname email cardNumber role')
+      .populate('book', 'title author isbn category')
+      .populate({
+        path: 'book',
+        populate: {
+          path: 'category',
+          select: 'name'
+        }
+      })
       .sort({ dueDate: 1 });
 
     // Update status to overdue
@@ -450,8 +492,15 @@ export const sendOverdueNotification = async (req: AuthRequest, res: Response) =
 
     // Find the borrowing
     const borrowing = await Borrowing.findById(id)
-      .populate('user', 'firstname lastname email')
-      .populate('book', 'title author');
+      .populate('user', 'firstname lastname email cardNumber role')
+      .populate('book', 'title author category')
+      .populate({
+        path: 'book',
+        populate: {
+          path: 'category',
+          select: 'name'
+        }
+      });
 
     if (!borrowing) {
       return res.status(404).json({
@@ -607,8 +656,15 @@ export const updateBorrowing = async (req: AuthRequest, res: Response) => {
     await borrowing.save();
 
     const updatedBorrowing = await Borrowing.findById(id)
-      .populate('user', 'firstname lastname email')
-      .populate('book', 'title author isbn format');
+      .populate('user', 'firstname lastname email cardNumber role')
+      .populate('book', 'title author isbn format category')
+      .populate({
+        path: 'book',
+        populate: {
+          path: 'category',
+          select: 'name'
+        }
+      });
 
     res.json({
       success: true,
