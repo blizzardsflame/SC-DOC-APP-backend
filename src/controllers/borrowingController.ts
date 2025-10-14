@@ -53,7 +53,7 @@ export const getBorrowings = async (req: AuthRequest, res: Response) => {
 
     const borrowings = await Borrowing.find(query)
       .populate('user', 'firstname lastname email cardNumber role')
-      .populate('book', 'title author isbn format category')
+      .populate('book', 'title author isbn format category coverImage')
       .populate({
         path: 'book',
         populate: {
