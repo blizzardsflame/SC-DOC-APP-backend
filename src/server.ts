@@ -17,6 +17,7 @@ import userRoutes from './routes/userRoutes.js';
 import libgenRoutes from './routes/libgenRoutes.js';
 import bookmarkRoutes from './routes/bookmarkRoutes.js';
 import favoriteRoutes from './routes/favoriteRoutes.js';
+import readingListRoutes from './routes/readingListRoutes.js';
 
 import './services/notificationScheduler.js';
 
@@ -93,6 +94,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/libgen', libgenRoutes);
 app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/reading-list', readingListRoutes);
 
 // Serve static files (uploads) with CORS headers
 app.use('/uploads', cors({
