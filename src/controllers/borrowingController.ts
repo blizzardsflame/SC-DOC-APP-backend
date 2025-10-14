@@ -284,7 +284,7 @@ export const returnBook = async (req: AuthRequest, res: Response) => {
     }
 
     // Check permissions
-    if (user?.role !== 'staff' && borrowing.user.toString() !== user?._id) {
+    if (user?.role !== 'staff' && borrowing.user.toString() !== user?._id?.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé'
@@ -349,7 +349,7 @@ export const renewBorrowing = async (req: AuthRequest, res: Response) => {
     }
 
     // Check permissions
-    if (user?.role !== 'staff' && borrowing.user.toString() !== user?._id) {
+    if (user?.role !== 'staff' && borrowing.user.toString() !== user?._id?.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé'
@@ -377,7 +377,7 @@ export const renewBorrowing = async (req: AuthRequest, res: Response) => {
 
     const populatedBorrowing = await Borrowing.findById(borrowing._id)
       .populate('user', 'firstname lastname email cardNumber role')
-      .populate('book', 'title author isbn format category')
+      .populate('book', 'title author isbn format category coverImage')
       .populate({
         path: 'book',
         populate: {
