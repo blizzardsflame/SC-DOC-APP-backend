@@ -149,3 +149,30 @@ export const borrowingSchema = Joi.object({
     }),
   dueDate: Joi.date().greater('now').optional()
 });
+
+// Bookmark validation schemas
+export const bookmarkSchema = Joi.object({
+  bookId: Joi.string().required()
+    .messages({
+      'string.empty': 'L\'ID du livre est requis'
+    }),
+  page: Joi.number().integer().min(1).required()
+    .messages({
+      'number.base': 'Le numéro de page doit être un nombre',
+      'number.integer': 'Le numéro de page doit être un entier',
+      'number.min': 'Le numéro de page doit être supérieur à 0',
+      'any.required': 'Le numéro de page est requis'
+    }),
+  note: Joi.string().trim().max(500).optional()
+    .messages({
+      'string.max': 'La note ne peut pas dépasser 500 caractères'
+    })
+});
+
+// Favorite validation schemas
+export const favoriteSchema = Joi.object({
+  bookId: Joi.string().required()
+    .messages({
+      'string.empty': 'L\'ID du livre est requis'
+    })
+});
