@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Borrowing } from '../models/Borrowing.js';
 import { Book } from '../models/Book.js';
 import { User } from '../models/User.js';
+import { addReadingHistoryEntry } from './readingHistoryController.js';
 import type { AuthRequest, ApiResponse } from '../types/index.js';
 import emailService from '../services/emailService';
 
@@ -302,6 +303,14 @@ export const returnBook = async (req: AuthRequest, res: Response) => {
     borrowing.status = 'returned';
     borrowing.returnDate = new Date();
     await borrowing.save();
+
+    // Add to reading history
+    await addReadingHistoryEntry(
+      user?._id?.toString() || '',
+      borrowing.book.toString(),
+      'borrowing',
+      borrowing._id.toString()
+    );
 
     // Update book availability
     const book = await Book.findById(borrowing.book);

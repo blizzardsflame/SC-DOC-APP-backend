@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { ReadingList } from '../models/ReadingList.js';
 import { Book } from '../models/Book.js';
+import { addReadingHistoryEntry } from './readingHistoryController.js';
 import type { AuthRequest, ApiResponse } from '../types/index.js';
 
 // Get user's reading list
@@ -175,6 +176,17 @@ export const updateReadingProgress = async (req: AuthRequest, res: Response) => 
     }
 
     await readingListItem.save();
+
+    // Add to reading history if marked as completed
+    if (readingListItem.status === 'completed') {
+      await addReadingHistoryEntry(
+        user?._id?.toString() || '',
+        bookId,
+        'reading_list',
+        undefined,
+        readingListItem._id.toString()
+      );
+    }
 
     const populatedItem = await ReadingList.findById(readingListItem._id)
       .populate('book', 'title author isbn format category coverImage')
