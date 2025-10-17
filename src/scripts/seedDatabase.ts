@@ -4,6 +4,7 @@ import { User } from "../models/User.js";
 import { Category } from "../models/Category.js";
 import { Book } from "../models/Book.js";
 import { Borrowing } from "../models/Borrowing.js";
+import { LibGenLink } from "../models/LibGenLink.js";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -1038,6 +1039,7 @@ async function clearDatabase() {
     await Category.deleteMany({});
     await Book.deleteMany({});
     await Borrowing.deleteMany({});
+    await LibGenLink.deleteMany({});
     console.log("🗑️  Base de données vidée");
   } catch (error) {
     console.error("❌ Erreur lors du vidage de la base de données:", error);
@@ -1295,6 +1297,89 @@ async function seedBorrowings(users: any[], books: any[]) {
   }
 }
 
+async function seedLibGenLinks() {
+  try {
+    console.log("🌱 Seeding LibGen links...");
+    const libgenLinksData = [
+      // Search mirrors
+      {
+        name: "LibGen.is",
+        url: "https://libgen.is",
+        type: "search",
+        isActive: true,
+        priority: 1,
+      },
+      {
+        name: "LibGen.st",
+        url: "https://libgen.st",
+        type: "search",
+        isActive: true,
+        priority: 2,
+      },
+      {
+        name: "LibGen.li",
+        url: "https://libgen.li",
+        type: "search",
+        isActive: true,
+        priority: 3,
+      },
+      {
+        name: "Gen.lib.rus.ec",
+        url: "http://gen.lib.rus.ec",
+        type: "search",
+        isActive: true,
+        priority: 4,
+      },
+      {
+        name: "LibGen.rs",
+        url: "http://libgen.rs",
+        type: "search",
+        isActive: true,
+        priority: 5,
+      },
+
+      // Download mirrors
+      {
+        name: "Library.lol",
+        url: "https://library.lol",
+        type: "download",
+        isActive: true,
+        priority: 1,
+      },
+      {
+        name: "3lib.net",
+        url: "https://3lib.net",
+        type: "download",
+        isActive: true,
+        priority: 2,
+      },
+      {
+        name: "Z-Library",
+        url: "https://z-lib.org",
+        type: "download",
+        isActive: true,
+        priority: 3,
+      },
+      {
+        name: "Anna's Archive",
+        url: "https://annas-archive.org",
+        type: "download",
+        isActive: true,
+        priority: 4,
+      },
+    ];
+
+    const libgenLinks = await LibGenLink.insertMany(libgenLinksData);
+    console.log(`✅ Successfully seeded ${libgenLinks.length} LibGen links`);
+    console.log(`   - Search mirrors: ${libgenLinks.filter(l => l.type === 'search').length}`);
+    console.log(`   - Download mirrors: ${libgenLinks.filter(l => l.type === 'download').length}`);
+    return libgenLinks;
+  } catch (error) {
+    console.error("❌ Error seeding LibGen links:", error);
+    throw error;
+  }
+}
+
 async function seedDatabase() {
   try {
     console.log("🌱 Début du seeding de la base de données...\n");
@@ -1306,6 +1391,7 @@ async function seedDatabase() {
     const users = await seedUsers();
     const books = await seedBooks(categoryMap);
     const borrowings = await seedBorrowings(users, books);
+    const libgenLinks = await seedLibGenLinks();
 
     console.log("\n🎉 Seeding terminé avec succès!");
     console.log("\n📊 Résumé:");
@@ -1313,6 +1399,7 @@ async function seedDatabase() {
     console.log(`   📚 Catégories: ${categoryMap.size}`);
     console.log(`   📖 Livres: ${books.length}`);
     console.log(`   📋 Emprunts: ${borrowings.length}`);
+    console.log(`   🔗 LibGen Links: ${libgenLinks.length}`);
 
     console.log("\n🔑 Comptes de test:");
     console.log(

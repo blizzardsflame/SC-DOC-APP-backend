@@ -1,9 +1,11 @@
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
 import https from 'https';
-import * as cheerio from 'cheerio';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { LibGenLink } from '../models/LibGenLink.js';
 
 interface LibGenBook {
   id: string;
@@ -35,7 +37,14 @@ interface SearchOptions {
 }
 
 class LibGenService {
-  private readonly baseUrls = [
+  // Cache for dynamic URLs to avoid frequent DB queries
+  private baseUrlsCache: string[] = [];
+  private downloadMirrorsCache: string[] = [];
+  private lastCacheUpdate: number = 0;
+  private readonly cacheTimeout = 5 * 60 * 1000; // 5 minutes
+
+  // Fallback URLs in case database is empty
+  private readonly fallbackBaseUrls = [
     'https://libgen.li',
     'https://libgen.is',
     'https://libgen.st', 
@@ -43,7 +52,7 @@ class LibGenService {
     'http://libgen.rs'
   ];
 
-  private readonly downloadMirrors = [
+  private readonly fallbackDownloadMirrors = [
     'https://libgen.li',
     'https://library.lol',
     'https://3lib.net',
@@ -51,12 +60,81 @@ class LibGenService {
   ];
 
   /**
+   * Get search URLs from database with caching
+   */
+  private async getBaseUrls(): Promise<string[]> {
+    const now = Date.now();
+    
+    // Return cached URLs if still valid
+    if (this.baseUrlsCache.length > 0 && (now - this.lastCacheUpdate) < this.cacheTimeout) {
+      return this.baseUrlsCache;
+    }
+
+    try {
+      // Fetch active search URLs from database
+      const links = await LibGenLink.find({ 
+        type: 'search', 
+        isActive: true 
+      }).sort({ priority: 1 });
+
+      if (links.length > 0) {
+        this.baseUrlsCache = links.map(link => link.url);
+        this.lastCacheUpdate = now;
+        return this.baseUrlsCache;
+      }
+    } catch (error) {
+      console.error('Error fetching search URLs from database:', error);
+    }
+
+    // Fallback to hardcoded URLs
+    this.baseUrlsCache = this.fallbackBaseUrls;
+    this.lastCacheUpdate = now;
+    return this.baseUrlsCache;
+  }
+
+  /**
+   * Get download URLs from database with caching
+   */
+  private async getDownloadMirrors(): Promise<string[]> {
+    const now = Date.now();
+    
+    // Return cached URLs if still valid
+    if (this.downloadMirrorsCache.length > 0 && (now - this.lastCacheUpdate) < this.cacheTimeout) {
+      return this.downloadMirrorsCache;
+    }
+
+    try {
+      // Fetch active download URLs from database
+      const links = await LibGenLink.find({ 
+        type: 'download', 
+        isActive: true 
+      }).sort({ priority: 1 });
+
+      if (links.length > 0) {
+        this.downloadMirrorsCache = links.map(link => link.url);
+        this.lastCacheUpdate = now;
+        return this.downloadMirrorsCache;
+      }
+    } catch (error) {
+      console.error('Error fetching download URLs from database:', error);
+    }
+
+    // Fallback to hardcoded URLs
+    this.downloadMirrorsCache = this.fallbackDownloadMirrors;
+    this.lastCacheUpdate = now;
+    return this.downloadMirrorsCache;
+  }
+
+  /**
    * Search for books in LibGen
    */
   async searchBooks(query: string, page: number = 1, limit: number = 25, options: SearchOptions = {}, format?: string): Promise<LibGenSearchResult> {
     try {
+      // Get dynamic URLs from database
+      const baseUrls = await this.getBaseUrls();
+      
       // First try real LibGen mirrors
-      for (const baseUrl of this.baseUrls) {
+      for (const baseUrl of baseUrls) {
         try {
           options.onStatusUpdate?.(`Searching on ${baseUrl}...`);
           
@@ -802,10 +880,11 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
   /**
    * Get download links for a specific book
    */
-  async getDownloadLinks(md5: string): Promise<string[]> {
+  private async getDownloadLinks(md5: string): Promise<string[]> {
     const downloadLinks: string[] = [];
+    const downloadMirrors = await this.getDownloadMirrors();
 
-    for (const mirror of this.downloadMirrors) {
+    for (const mirror of downloadMirrors) {
       try {
         // Different mirrors have different URL patterns
         if (mirror.includes('library.lol')) {
@@ -958,7 +1037,7 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
   /**
    * Import a LibGen book into the local database
    */
-  async importBook(libgenBook: LibGenBook, categoryId: string, downloadedFilePath: string) {
+  async importBook(libgenBook: LibGenBook, categoryId: string, downloadedFilePath: string, subcategoryId?: string) {
     // Map LibGen language names to our language codes
     const languageMap: { [key: string]: string } = {
       'english': 'en',
@@ -974,7 +1053,7 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
     const mappedLanguage = languageMap[libgenLanguage] || 'en';
 
     // This would integrate with your existing Book model
-    const bookData = {
+    const bookData: any = {
       title: libgenBook.title,
       author: libgenBook.author,
       description: `Imported from LibGen. Year: ${libgenBook.year}, Pages: ${libgenBook.pages}`,
@@ -989,7 +1068,12 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
       // You might want to download and save the cover image too
       coverImage: libgenBook.coverUrl
     };
-
+    
+    // Add subcategory if provided
+    if (subcategoryId) {
+      bookData.subcategory = subcategoryId;
+    }
+    
     return bookData;
   }
 

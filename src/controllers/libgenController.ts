@@ -173,10 +173,11 @@ export const downloadAndImportBook = async (req: AuthRequest, res: Response) => 
       downloadUrl, 
       bookInfo, 
       categoryId,
+      subcategoryId,
       physicalCopies = 0 
     } = req.body;
 
-    console.log('Extracted data:', { downloadUrl, bookInfo, categoryId, physicalCopies });
+    console.log('Extracted data:', { downloadUrl, bookInfo, categoryId, subcategoryId, physicalCopies });
 
     if (!downloadUrl || !bookInfo || !categoryId) {
       console.log('Missing required fields:', { 
@@ -207,7 +208,7 @@ export const downloadAndImportBook = async (req: AuthRequest, res: Response) => 
     const filePath = await libgenService.downloadBook(downloadUrl, bookInfo);
 
     // Prepare book data for database
-    const bookData = await libgenService.importBook(bookInfo, categoryId, filePath);
+    const bookData = await libgenService.importBook(bookInfo, categoryId, filePath, subcategoryId);
     
     // Add physical copies if specified
     bookData.physicalCopies = parseInt(physicalCopies as string) || 0;
