@@ -170,7 +170,7 @@ export const createBook = async (req: AuthRequest, res: Response) => {
   try {
     const bookData = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-
+    
     // Verify category exists
     const category = await Category.findById(bookData.category);
     if (!category) {
@@ -229,7 +229,7 @@ export const createBook = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Clean empty string values for ObjectId fields
+    // Handle empty subcategory - remove for new books (undefined is fine)
     if (bookData.subcategory === '') {
       delete bookData.subcategory;
     }
@@ -277,7 +277,7 @@ export const updateBook = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const updateData = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-
+    
     // Verify category exists if being updated
     if (updateData.category) {
       const category = await Category.findById(updateData.category);
@@ -338,9 +338,9 @@ export const updateBook = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Clean empty string values for ObjectId fields
+    // Handle empty subcategory - set to null for updates to clear the field
     if (updateData.subcategory === '') {
-      delete updateData.subcategory;
+      updateData.subcategory = null;
     }
 
     // Convert string numbers to actual numbers
