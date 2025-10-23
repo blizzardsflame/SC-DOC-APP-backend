@@ -8,6 +8,8 @@ export interface IReadingHistory extends Document {
   source: 'borrowing' | 'reading_list' | 'manual';
   borrowingId?: Types.ObjectId;
   readingListId?: Types.ObjectId;
+  progress?: number;
+  lastPage?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +43,17 @@ const readingHistorySchema = new Schema<IReadingHistory>({
     type: Schema.Types.ObjectId,
     ref: 'ReadingList',
     required: false
+  },
+  progress: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  lastPage: {
+    type: Number,
+    min: 1,
+    default: 1
   }
 }, {
   timestamps: true

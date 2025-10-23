@@ -6,6 +6,7 @@ export interface IReadingList extends Document {
   book: Types.ObjectId;
   status: 'to-read' | 'reading' | 'completed';
   progress?: number;
+  lastPage?: number;
   addedDate: Date;
   lastReadDate?: Date;
   notes?: string;
@@ -34,6 +35,11 @@ const readingListSchema = new Schema<IReadingList>({
     min: 0,
     max: 100,
     default: 0
+  },
+  lastPage: {
+    type: Number,
+    min: 1,
+    default: 1
   },
   addedDate: {
     type: Date,

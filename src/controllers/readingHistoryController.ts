@@ -38,7 +38,7 @@ export const getReadingHistory = async (req: AuthRequest, res: Response) => {
 export const addToReadingHistory = async (req: AuthRequest, res: Response) => {
   try {
     const { user } = req;
-    const { bookId, source = 'manual', borrowingId, readingListId } = req.body;
+    const { bookId, source = 'manual', borrowingId, readingListId, progress = 0, lastPage = 1 } = req.body;
 
     // Check if entry already exists for this source
     const existingEntry = await ReadingHistory.findOne({
@@ -48,8 +48,10 @@ export const addToReadingHistory = async (req: AuthRequest, res: Response) => {
     });
 
     if (existingEntry) {
-      // Update the read date
+      // Update the read date and progress
       existingEntry.readDate = new Date();
+      existingEntry.progress = progress;
+      existingEntry.lastPage = lastPage;
       await existingEntry.save();
 
       const populatedEntry = await ReadingHistory.findById(existingEntry._id)
@@ -76,6 +78,8 @@ export const addToReadingHistory = async (req: AuthRequest, res: Response) => {
       source,
       borrowingId,
       readingListId,
+      progress,
+      lastPage,
       readDate: new Date()
     });
 

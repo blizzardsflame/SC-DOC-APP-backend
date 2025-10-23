@@ -139,7 +139,7 @@ export const updateReadingProgress = async (req: AuthRequest, res: Response) => 
   try {
     const { user } = req;
     const { bookId } = req.params;
-    const { progress, status, notes } = req.body;
+    const { progress, status, notes, lastPage } = req.body;
 
     const readingListItem = await ReadingList.findOne({
       user: user?._id,
@@ -164,6 +164,11 @@ export const updateReadingProgress = async (req: AuthRequest, res: Response) => 
       } else if (progress > 0) {
         readingListItem.status = 'reading';
       }
+    }
+
+    if (lastPage !== undefined) {
+      readingListItem.lastPage = lastPage;
+      readingListItem.lastReadDate = new Date();
     }
 
     if (status) {
