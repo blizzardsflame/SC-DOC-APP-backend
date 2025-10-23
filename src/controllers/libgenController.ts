@@ -170,24 +170,33 @@ export const downloadAndImportBook = async (req: AuthRequest, res: Response) => 
     }
 
     const { 
-      downloadUrl, 
+      downloadUrls, 
       bookInfo, 
       categoryId,
       subcategoryId,
       physicalCopies = 0 
     } = req.body;
 
-    console.log('Extracted data:', { downloadUrl, bookInfo, categoryId, subcategoryId, physicalCopies });
+    console.log('Extracted data:', { downloadUrls, bookInfo, categoryId, subcategoryId, physicalCopies });
 
-    if (!downloadUrl || !bookInfo || !categoryId) {
+    if (!downloadUrls || !bookInfo || !categoryId) {
       console.log('Missing required fields:', { 
-        hasDownloadUrl: !!downloadUrl, 
+        hasDownloadUrls: !!downloadUrls, 
         hasBookInfo: !!bookInfo, 
         hasCategoryId: !!categoryId 
       });
       return res.status(400).json({
         success: false,
-        message: 'URL de téléchargement, informations du livre et catégorie requis'
+        message: 'URLs de téléchargement, informations du livre et catégorie requis'
+      } as ApiResponse);
+    }
+
+    // Validate bookInfo structure
+    if (!bookInfo.title || !bookInfo.author) {
+      console.log('Invalid book info:', bookInfo);
+      return res.status(400).json({
+        success: false,
+        message: 'Informations du livre invalides - titre et auteur requis'
       } as ApiResponse);
     }
 
@@ -205,23 +214,49 @@ export const downloadAndImportBook = async (req: AuthRequest, res: Response) => 
     }
 
     // Download the book file
-    const filePath = await libgenService.downloadBook(downloadUrl, bookInfo);
+    console.log('Starting book download with URLs:', downloadUrls);
+    let filePath;
+    let downloadFailed = false;
+    try {
+      filePath = await libgenService.downloadBookWithMultipleUrls(downloadUrls, bookInfo);
+      console.log('Book downloaded successfully, file path:', filePath);
+    } catch (downloadError) {
+      console.error('Download failed:', downloadError);
+      downloadFailed = true;
+      // Use a placeholder path if download fails
+      filePath = '/uploads/books/placeholder.pdf';
+      console.log('Using placeholder file path - download failed');
+    }
 
     // Prepare book data for database
+    console.log('Preparing book data for import...');
     const bookData = await libgenService.importBook(bookInfo, categoryId, filePath, subcategoryId);
+    console.log('Book data prepared:', bookData);
     
     // Add physical copies if specified
     bookData.physicalCopies = parseInt(physicalCopies as string) || 0;
     bookData.availableCopies = bookData.physicalCopies;
 
     // Create book in database
+    console.log('Creating book in database...');
     const newBook = new Book(bookData);
-    await newBook.save();
+    try {
+      await newBook.save();
+      console.log('Book saved successfully:', newBook._id);
+    } catch (saveError) {
+      console.error('Database save error:', saveError);
+      throw saveError;
+    }
 
     res.json({
       success: true,
-      message: 'Livre téléchargé et importé avec succès',
-      data: newBook
+      message: downloadFailed 
+        ? 'Livre importé avec succès, mais le fichier PDF/EPUB n\'a pas pu être téléchargé. Vous devrez l\'ajouter manuellement.'
+        : 'Livre téléchargé et importé avec succès',
+      data: { 
+        book: newBook,
+        downloadFailed 
+      }
     } as ApiResponse);
   } catch (error: any) {
     console.error('Download and import error:', error);

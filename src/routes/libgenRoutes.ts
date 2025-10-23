@@ -8,13 +8,13 @@ import {
   downloadAndImportBook,
   getBookDetails
 } from '../controllers/libgenController.js';
-import { auth, requireRole } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // All routes require authentication and staff role
-router.use(auth);
-router.use(requireRole('staff'));
+router.use(authenticate);
+router.use(authorize('staff'));
 
 // Search LibGen for books (regular)
 router.get('/search', searchLibGen);

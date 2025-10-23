@@ -426,7 +426,7 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
         
         if (cells.length >= 9) {
           const title = cells.eq(2).find('a').text().trim();
-          const author = cells.eq(1).text().trim();
+          let author = cells.eq(1).text().trim() || 'Unknown Author';
           const publisher = cells.eq(3).text().trim(); // Publisher is usually in column 3
           const year = cells.eq(4).text().trim();
           const pages = cells.eq(5).text().trim();
@@ -608,7 +608,7 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
           // Cell 4: Language
           
           let title = cells.eq(0).text().trim();
-          let author = cells.eq(1).text().trim();
+          let author = cells.eq(1).text().trim() || 'Unknown Author';
           const publisher = cells.eq(2).text().trim();
           const year = cells.eq(3).text().trim();
           const language = cells.eq(4).text().trim();
@@ -750,6 +750,11 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
             author = title.split(/[;,]|by\s+/i)[0].trim();
           }
           
+          // Ensure author is never empty
+          if (!author) {
+            author = 'Unknown Author';
+          }
+          
           // Comprehensive data logging for libgen.li
           console.log(`=== COMPREHENSIVE DATA EXTRACTION (libgen.li) ===`);
           console.log(`Book ID: "${bookId}"`);
@@ -797,7 +802,7 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
         
         if (cells.length >= 9) {
           const title = cells.eq(2).find('a').text().trim() || cells.eq(2).text().trim();
-          const author = cells.eq(1).text().trim();
+          const author = cells.eq(1).text().trim() || 'Unknown Author';
           const year = cells.eq(4).text().trim();
           const pages = cells.eq(5).text().trim();
           const language = cells.eq(6).text().trim();
@@ -878,31 +883,46 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
 }
 
   /**
-   * Get download links for a specific book
+   * Get download links for a specific book (only from database mirrors)
    */
   private async getDownloadLinks(md5: string): Promise<string[]> {
     const downloadLinks: string[] = [];
     const downloadMirrors = await this.getDownloadMirrors();
 
+    console.log(`Using ${downloadMirrors.length} mirrors from database for MD5: ${md5}`);
+
     for (const mirror of downloadMirrors) {
       try {
         // Different mirrors have different URL patterns
         if (mirror.includes('library.lol')) {
+          // Try multiple library.lol patterns
           downloadLinks.push(`${mirror}/main/${md5}`);
+          downloadLinks.push(`${mirror}/get.php?md5=${md5}&key=`);
         } else if (mirror.includes('libgen.li')) {
           // Extract actual download URL from ads page
           const actualUrl = await this.extractActualDownloadUrl(`${mirror}/ads.php?md5=${md5}`);
           if (actualUrl) {
             downloadLinks.push(actualUrl);
           }
-        } else {
+        } else if (mirror.includes('libgen.rs') || mirror.includes('gen.lib.rus.ec')) {
           downloadLinks.push(`${mirror}/book/index.php?md5=${md5}`);
+        } else {
+          // Generic pattern for other mirrors
+          downloadLinks.push(`${mirror}/main/${md5}`);
         }
       } catch (error) {
-        console.log(`Failed to get download link from ${mirror}`);
+        console.log(`Failed to get download link from ${mirror}:`, error);
       }
     }
 
+    // Only add a few reliable fallbacks if no database mirrors worked
+    if (downloadLinks.length === 0) {
+      console.log('No database mirrors available, using minimal fallbacks');
+      downloadLinks.push(`https://library.lol/main/${md5}`);
+      downloadLinks.push(`https://libgen.li/ads.php?md5=${md5}`);
+    }
+
+    console.log(`Generated ${downloadLinks.length} download links for MD5: ${md5}`);
     return downloadLinks;
   }
 
@@ -991,10 +1011,43 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
   }
 
   /**
+   * Download a book file trying multiple URLs until one works
+   */
+  async downloadBookWithMultipleUrls(downloadUrls: string[], bookInfo: LibGenBook): Promise<string> {
+    console.log(`Trying to download book from ${downloadUrls.length} URLs`);
+    
+    for (let i = 0; i < downloadUrls.length; i++) {
+      const url = downloadUrls[i];
+      if (!url) {
+        console.log(`Skipping empty URL at index ${i}`);
+        continue;
+      }
+      
+      console.log(`Attempt ${i + 1}/${downloadUrls.length}: ${url}`);
+      
+      try {
+        const filePath = await this.downloadBook(url, bookInfo);
+        console.log(`Successfully downloaded from URL ${i + 1}: ${url}`);
+        return filePath;
+      } catch (error: any) {
+        console.log(`Failed to download from URL ${i + 1}: ${url}`, error?.message || error);
+        if (i === downloadUrls.length - 1) {
+          throw new Error(`Failed to download from all ${downloadUrls.length} URLs`);
+        }
+      }
+    }
+    
+    throw new Error('No download URLs provided');
+  }
+
+  /**
    * Download a book file and save it to the server
    */
   async downloadBook(downloadUrl: string, bookInfo: LibGenBook): Promise<string> {
     try {
+      console.log('Downloading book from URL:', downloadUrl);
+      console.log('Book info:', bookInfo);
+      
       const response = await axios.get(downloadUrl, {
         responseType: 'stream',
         timeout: 60000, // 1 minute timeout
@@ -1008,8 +1061,14 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
 
       // Generate unique filename
       const timestamp = Date.now();
-      const sanitizedTitle = bookInfo.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+      // More aggressive sanitization for filename
+      const sanitizedTitle = bookInfo.title
+        .replace(/[^\w\s-]/g, '') // Remove special chars except word chars, spaces, hyphens
+        .replace(/\s+/g, '_') // Replace spaces with underscores
+        .substring(0, 50); // Limit length to avoid filesystem issues
       const filename = `${timestamp}-${sanitizedTitle}.${bookInfo.extension || 'pdf'}`;
+      
+      console.log('Generated filename:', filename);
       
       // Ensure uploads directory exists
       const uploadsDir = path.join(process.cwd(), 'uploads', 'books');
@@ -1024,9 +1083,19 @@ private parseSearchResults(html: string, baseUrl: string, format?: string): LibG
 
       return new Promise((resolve, reject) => {
         writer.on('finish', () => {
+          console.log('File download completed successfully');
           resolve(`/uploads/books/${filename}`);
         });
-        writer.on('error', reject);
+        writer.on('error', (error) => {
+          console.error('File write error:', error);
+          reject(error);
+        });
+        
+        // Also handle response stream errors
+        response.data.on('error', (error: any) => {
+          console.error('Download stream error:', error);
+          reject(error);
+        });
       });
     } catch (error) {
       console.error('Book download error:', error);

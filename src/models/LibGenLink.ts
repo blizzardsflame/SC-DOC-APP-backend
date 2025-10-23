@@ -61,6 +61,6 @@ const libGenLinkSchema = new Schema<ILibGenLink>({
 
 // Index for efficient queries
 libGenLinkSchema.index({ type: 1, isActive: 1, priority: 1 });
-libGenLinkSchema.index({ url: 1 }, { unique: true });
+libGenLinkSchema.index({ url: 1, type: 1 }); // Allow same URL for different types
 
 export const LibGenLink = mongoose.model<ILibGenLink>('LibGenLink', libGenLinkSchema);
